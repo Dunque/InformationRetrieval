@@ -10,7 +10,6 @@
 	<version>0.0.1-SNAPSHOT</version>
 
 	<name>mipractica</name>
-	<!-- FIXME change it to the project's website -->
 	<url>http://www.example.com</url>
 
 	<properties>
@@ -60,7 +59,7 @@
 
 	</dependencies>
 	<build>
-		<pluginManagement><!-- lock down plugins versions to avoid using Maven 
+		<pluginManagement><!-- lock down plugins versions to avoid using Maven
 				defaults (may be moved to parent pom) -->
 			<plugins>
 				<!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->
@@ -84,6 +83,14 @@
 				<plugin>
 					<artifactId>maven-jar-plugin</artifactId>
 					<version>3.1.1</version>
+					<configuration>
+						<archive>
+							<manifest>
+								<addClasspath>true</addClasspath>
+								<mainClass>es.udc.fic.ri.mipractica.App</mainClass>
+							</manifest>
+						</archive>
+					</configuration>
 				</plugin>
 				<plugin>
 					<artifactId>maven-install-plugin</artifactId>
@@ -104,9 +111,8 @@
 				</plugin>
 
 				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-assembly-plugin</artifactId>
-					<version>3.1.1</version>
+					<version>3.3.0</version>
 					<executions>
 						<execution>
 							<id>IndexFiles</id>
@@ -218,7 +224,6 @@
 						</execution>
 					</executions>
 				</plugin>
-
 			</plugins>
 		</pluginManagement>
 	</build>
