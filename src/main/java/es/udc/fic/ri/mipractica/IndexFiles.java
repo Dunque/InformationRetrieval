@@ -1,25 +1,6 @@
-/*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 package es.udc.fic.ri.mipractica;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -27,7 +8,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Date;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -51,161 +34,321 @@ import org.apache.lucene.store.FSDirectory;
  */
 public class IndexFiles {
 
-	private IndexFiles() {
-	}
+    static final String DEFAULT_PATH = "./config.properties";
 
-	/** Index all text files under a directory. */
-	public static void main(String[] args) {
-		String usage = "java org.apache.lucene.demo.IndexFiles" + " [-index INDEX_PATH] [-docs DOCS_PATH] [-update]\n\n"
-				+ "This indexes the documents in DOCS_PATH, creating a Lucene index"
-				+ "in INDEX_PATH that can be searched with SearchFiles";
-		String indexPath = "index";
-		String docsPath = null;
-		boolean create = true;
-		for (int i = 0; i < args.length; i++) {
-			if ("-index".equals(args[i])) {
-				indexPath = args[i + 1];
-				i++;
-			} else if ("-docs".equals(args[i])) {
-				docsPath = args[i + 1];
-				i++;
-			} else if ("-update".equals(args[i])) {
-				create = false;
-			}
-		}
+    static String indexPath = "index"; //default index path is a folder named index located in the root dir
+    static boolean create = true; //Create true == Update false
+    static boolean onlyFiles = false;
+    static List<String> fileTypes = new ArrayList<String>();
+    static List<Path> docsPath = new ArrayList<Path>();
+    static OpenMode openmode = OpenMode.CREATE_OR_APPEND;
+    static boolean partialIndex = false;
+    static List<Path> partialIndexes = new ArrayList<Path>();
+    static int numThreads = Runtime.getRuntime().availableProcessors();
 
-		if (docsPath == null) {
-			System.err.println("Usage: " + usage);
-			System.exit(1);
-		}
+    static int topLines = 0;
+    static int bottomLines = 0;
+    //final ExecutorService executor = Executors.newFixedThreadPool(numCores);
 
-		final Path docDir = Paths.get(docsPath);
-		if (!Files.isReadable(docDir)) {
-			System.out.println("Document directory '" + docDir.toAbsolutePath()
-					+ "' does not exist or is not readable, please check the path");
-			System.exit(1);
-		}
+    private IndexFiles() {
+    }
 
-		Date start = new Date();
-		try {
-			System.out.println("Indexing to directory '" + indexPath + "'...");
+    private static void parseArguments(String[] args) {
 
-			Directory dir = FSDirectory.open(Paths.get(indexPath));
-			Analyzer analyzer = new StandardAnalyzer();
-			IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+        String usage = "java -jar IndexFiles-0.0.1-SNAPSHOT-jar-with-dependencies"
+                + " [-index INDEX_PATH] [-update] [-onlyFiles]"
+                + " [-openmode <APPEND | CREATE | APPEND_OR_CREATE>]"
+                + " [-partialIndexes] [-numThreads NUM_THREADS]\n"
+                + "This indexes the documents in DOCS_PATH, creating a Lucene index"
+                + " in INDEX_PATH that can be searched with SearchFiles";
 
-			if (create) {
-				// Create a new index in the directory, removing any
-				// previously indexed documents:
-				iwc.setOpenMode(OpenMode.CREATE);
-			} else {
-				// Add new documents to an existing index:
-				iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-			}
+        if (args.length < 1)
+            System.out.println(usage);
 
-			// Optional: for better indexing performance, if you
-			// are indexing many documents, increase the RAM
-			// buffer. But if you do this, increase the max heap
-			// size to the JVM (eg add -Xmx512m or -Xmx1g):
-			//
-			// iwc.setRAMBufferSizeMB(256.0);
+        for (int i = 0; i < args.length; i++) {
+            if ("-index".equals(args[i])) {
+                indexPath = args[i + 1];
+                System.out.println(args[i] + args[i + 1]);
+                i++;
+            } else if ("-update".equals(args[i])) {
+                create = false;
+                System.out.println(args[i]);
+            } else if ("-onlyFiles".equals(args[i])) {
+                onlyFiles = true;
+                System.out.println(args[i]);
+            } else if ("-openmode".equals(args[i])) {
+                openmode = IndexWriterConfig.OpenMode.valueOf(args[i + 1]);
+                System.out.println(args[i] + args[i + 1]);
+                i++;
+            } else if ("-partialIndexes".equals(args[i])) {
+                partialIndex = true;
+                System.out.println(args[i]);
+            } else if ("-numThreads".equals(args[i])) {
+                numThreads = Integer.parseInt(args[i + 1]);
+                System.out.println(args[i] + args[i + 1]);
+                i++;
+            }
+        }
+    }
 
-			IndexWriter writer = new IndexWriter(dir, iwc);
-			indexDocs(writer, docDir);
+    /**
+     * Index all text files under a directory.
+     */
+    public static void main(String[] args) {
 
-			// NOTE: if you want to maximize search performance,
-			// you can optionally call forceMerge here. This can be
-			// a terribly costly operation, so generally it's only
-			// worth it when your index is relatively static (ie
-			// you're done adding documents to it):
-			//
-			// writer.forceMerge(1);
+        parseArguments(args);
+        readConfigFile(DEFAULT_PATH);
 
-			writer.close();
+        for (Path path : docsPath) {
+            if (!Files.isReadable(path)) {
+                System.out.println("Document directory '" + path.toAbsolutePath()
+                        + "' does not exist or is not readable, please check the path");
+                System.exit(1);
+            }
+        }
 
-			Date end = new Date();
-			System.out.println(end.getTime() - start.getTime() + " total milliseconds");
+        Date start = new Date();
+        try {
+            System.out.println("Indexing to directory '" + indexPath + "'...");
 
-		} catch (IOException e) {
-			System.out.println(" caught a " + e.getClass() + "\n with message: " + e.getMessage());
-		}
-	}
+            Directory dir = FSDirectory.open(Paths.get(indexPath));
+            Analyzer analyzer = new StandardAnalyzer();
+            IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
 
-	/**
-	 * Indexes the given file using the given writer, or if a directory is given,
-	 * recurses over files and directories found under the given directory.
-	 * 
-	 * NOTE: This method indexes one document per input file. This is slow. For good
-	 * throughput, put multiple documents into your input file(s). An example of
-	 * this is in the benchmark module, which can create "line doc" files, one
-	 * document per line, using the <a href=
-	 * "../../../../../contrib-benchmark/org/apache/lucene/benchmark/byTask/tasks/WriteLineDocTask.html"
-	 * >WriteLineDocTask</a>.
-	 * 
-	 * @param writer Writer to the index where the given file/dir info will be
-	 *               stored
-	 * @param path   The file to index, or the directory to recurse into to find
-	 *               files to index
-	 * @throws IOException If there is a low-level I/O error
-	 */
-	static void indexDocs(final IndexWriter writer, Path path) throws IOException {
-		if (Files.isDirectory(path)) {
-			Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-				@Override
-				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-					try {
-						indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
-					} catch (IOException ignore) {
-						// don't index files that can't be read.
-					}
-					return FileVisitResult.CONTINUE;
-				}
-			});
-		} else {
-			indexDoc(writer, path, Files.getLastModifiedTime(path).toMillis());
-		}
-	}
+            if (create) {
+                // Create a new index in the directory, removing any
+                // previously indexed documents:
+                iwc.setOpenMode(OpenMode.CREATE);
+            } else {
+                // Add new documents to an existing index:
+                iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
+            }
 
-	/** Indexes a single document */
-	static void indexDoc(IndexWriter writer, Path file, long lastModified) throws IOException {
-		try (InputStream stream = Files.newInputStream(file)) {
-			// make a new, empty document
-			Document doc = new Document();
+            // Optional: for better indexing performance, if you
+            // are indexing many documents, increase the RAM
+            // buffer. But if you do this, increase the max heap
+            // size to the JVM (eg add -Xmx512m or -Xmx1g):
+            //
+            // iwc.setRAMBufferSizeMB(256.0);
 
-			// Add the path of the file as a field named "path". Use a
-			// field that is indexed (i.e. searchable), but don't tokenize
-			// the field into separate words and don't index term frequency
-			// or positional information:
-			Field pathField = new StringField("path", file.toString(), Field.Store.YES);
-			doc.add(pathField);
+            IndexWriter writer = new IndexWriter(dir, iwc);
 
-			// Add the last modified date of the file a field named "modified".
-			// Use a LongPoint that is indexed (i.e. efficiently filterable with
-			// PointRangeQuery). This indexes to milli-second resolution, which
-			// is often too fine. You could instead create a number based on
-			// year/month/day/hour/minutes/seconds, down the resolution you require.
-			// For example the long value 2011021714 would mean
-			// February 17, 2011, 2-3 PM.
-			doc.add(new LongPoint("modified", lastModified));
+            for (Path path : docsPath)
+                indexDocs(writer, path);
 
-			// Add the contents of the file to a field named "contents". Specify a Reader,
-			// so that the text of the file is tokenized and indexed, but not stored.
-			// Note that FileReader expects the file to be in UTF-8 encoding.
-			// If that's not the case searching for special characters will fail.
-			doc.add(new TextField("contents",
-					new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+            // NOTE: if you want to maximize search performance,
+            // you can optionally call forceMerge here. This can be
+            // a terribly costly operation, so generally it's only
+            // worth it when your index is relatively static (ie
+            // you're done adding documents to it):
+            //
+            // writer.forceMerge(1);
 
-			if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
-				// New index, so we just add the document (no old document can be there):
-				System.out.println("adding " + file);
-				writer.addDocument(doc);
-			} else {
-				// Existing index (an old copy of this document may have been indexed) so
-				// we use updateDocument instead to replace the old one matching the exact
-				// path, if present:
-				System.out.println("updating " + file);
-				writer.updateDocument(new Term("path", file.toString()), doc);
-			}
-		}
-	}
+            writer.close();
+
+            Date end = new Date();
+            System.out.println(end.getTime() - start.getTime() + " total milliseconds");
+
+        } catch (IOException e) {
+            System.out.println(" caught a " + e.getClass() + " with message: " + e.getMessage());
+        }
+    }
+
+//	public static class WorkerThread implements Runnable {
+//
+//		private final Path folder;
+//
+//		public WorkerThread(final Path folder) {
+//			this.folder = folder;
+//		}
+//
+//		/**
+//		 * This is the work that the current thread will do when processed by the pool.
+//		 * In this case, it will only print some information.
+//		 */
+//		@Override
+//		public void run() {
+//			String ThreadName = Thread.currentThread().getName();
+//
+//			System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
+//					Thread.currentThread().getName(), folder));
+//
+//			//-----------------------------------------------------------------
+//			try {
+//				System.out.println(ThreadName+": Indexing to directory '" + dir + "'...");
+//
+//				//Directory dir = FSDirectory.open(Paths.get(indexPath+"/"+ThreadName));
+//
+//				Analyzer analyzer = new StandardAnalyzer();
+//				IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+//
+//				if (create) {
+//					iwc.setOpenMode(OpenMode.CREATE);
+//				} else {
+//					// Add new documents to an existing index:
+//					iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
+//				}
+//
+//				IndexWriter writer = new IndexWriter(dir, iwc);
+//				//Do indexDoc to every file of folder (como indexDocs)
+//				indexDocs(writer,folder,ThreadName);
+//
+//				writer.close();
+//
+//			} catch (IOException e) {
+//				System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
+//			}
+//			//-----------------------------------------------------------------
+//
+//		}
+//
+//	}
+
+    private static void readConfigFile(String path) {
+
+        FileInputStream inputStream;
+        Properties prop = new Properties();
+
+        try {
+            inputStream = new FileInputStream(path);
+            prop.load(inputStream);
+        } catch (IOException ex) {
+            System.out.println("Error reading config file: " + ex);
+            System.exit(-1);
+        }
+
+        //Read and store docs paths
+        String docsList = prop.getProperty("docs");
+        if (docsList != null) {
+            String[] docsSplit = docsList.split(" ");
+            for (int i = 0; i < docsSplit.length; i++) {
+                Path doc = Paths.get(docsSplit[i]);
+                docsPath.add(doc);
+            }
+        } else {
+            System.out.println("Error in the config file, there are no docs paths");
+            System.exit(-1);
+        }
+
+        //Read and store partial indexes paths
+        String partIndexList = prop.getProperty("partialIndexes");
+        if (partIndexList != null) {
+            String[] partIndexSplit = partIndexList.split(" ");
+            for (int i = 0; i < partIndexSplit.length; i++) {
+                Path partIndex = Paths.get(partIndexSplit[i]);
+                partialIndexes.add(partIndex);
+            }
+        } else {
+            System.out.println("Error in the config file, there are no partial index paths");
+            System.exit(-1);
+        }
+
+        //Reading the allowed file types
+        String fileTypesList = prop.getProperty("onlyFiles");
+        if (fileTypesList != null) {
+            String[] fileTypesSplit = fileTypesList.split(" ");
+            fileTypes.addAll(Arrays.asList(fileTypesSplit));
+        } else
+            System.out.println("Warning, no file types specified in config file");
+
+        //Reading topLines property
+        String onlyTopLines = prop.getProperty("onlyTopLines");
+        if (onlyTopLines != null) {
+            try {
+                topLines = Integer.parseInt(onlyTopLines);
+            } catch (Exception e) {
+                System.out.println("Error reading onlyTopLines property " + e);
+            }
+        }
+
+        //Reading bottomLines property
+        String onlyBottomLines = prop.getProperty("onlyBottomLines");
+        if (onlyBottomLines != null) {
+            try {
+                bottomLines = Integer.parseInt(onlyBottomLines);
+            } catch (Exception e) {
+                System.out.println("Error reading onlyBottomLines property " + e);
+            }
+        }
+    }
+
+    /**
+     * Indexes the given file using the given writer, or if a directory is given,
+     * recurses over files and directories found under the given directory.
+     * <p>
+     * NOTE: This method indexes one document per input file. This is slow. For good
+     * throughput, put multiple documents into your input file(s). An example of
+     * this is in the benchmark module, which can create "line doc" files, one
+     * document per line, using the <a href=
+     * "../../../../../contrib-benchmark/org/apache/lucene/benchmark/byTask/tasks/WriteLineDocTask.html"
+     * >WriteLineDocTask</a>.
+     *
+     * @param writer Writer to the index where the given file/dir info will be
+     *               stored
+     * @param path   The file to index, or the directory to recurse into to find
+     *               files to index
+     * @throws IOException If there is a low-level I/O error
+     */
+    static void indexDocs(final IndexWriter writer, Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    try {
+                        indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
+                    } catch (IOException ignore) {
+                        // don't index files that can't be read.
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } else {
+            indexDoc(writer, path, Files.getLastModifiedTime(path).toMillis());
+        }
+    }
+
+    /**
+     * Indexes a single document
+     */
+    static void indexDoc(IndexWriter writer, Path file, long lastModified) throws IOException {
+        try (InputStream stream = Files.newInputStream(file)) {
+            // make a new, empty document
+            Document doc = new Document();
+
+            // Add the path of the file as a field named "path". Use a
+            // field that is indexed (i.e. searchable), but don't tokenize
+            // the field into separate words and don't index term frequency
+            // or positional information:
+            Field pathField = new StringField("path", file.toString(), Field.Store.YES);
+            doc.add(pathField);
+
+            // Add the last modified date of the file a field named "modified".
+            // Use a LongPoint that is indexed (i.e. efficiently filterable with
+            // PointRangeQuery). This indexes to milli-second resolution, which
+            // is often too fine. You could instead create a number based on
+            // year/month/day/hour/minutes/seconds, down the resolution you require.
+            // For example the long value 2011021714 would mean
+            // February 17, 2011, 2-3 PM.
+            doc.add(new LongPoint("modified", lastModified));
+
+            // Add the contents of the file to a field named "contents". Specify a Reader,
+            // so that the text of the file is tokenized and indexed, but not stored.
+            // Note that FileReader expects the file to be in UTF-8 encoding.
+            // If that's not the case searching for special characters will fail.
+            doc.add(new TextField("contents",
+                    new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+
+            if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
+                // New index, so we just add the document (no old document can be there):
+                System.out.println("adding " + file);
+                writer.addDocument(doc);
+            } else {
+                // Existing index (an old copy of this document may have been indexed) so
+                // we use updateDocument instead to replace the old one matching the exact
+                // path, if present:
+                System.out.println("updating " + file);
+                writer.updateDocument(new Term("path", file.toString()), doc);
+            }
+        }
+    }
 }
