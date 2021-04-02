@@ -154,55 +154,55 @@ public class IndexFiles {
         }
     }
 
-//	public static class WorkerThread implements Runnable {
-//
-//		private final Path folder;
-//
-//		public WorkerThread(final Path folder) {
-//			this.folder = folder;
-//		}
-//
-//		/**
-//		 * This is the work that the current thread will do when processed by the pool.
-//		 * In this case, it will only print some information.
-//		 */
-//		@Override
-//		public void run() {
-//			String ThreadName = Thread.currentThread().getName();
-//
-//			System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
-//					Thread.currentThread().getName(), folder));
-//
-//			//-----------------------------------------------------------------
-//			try {
-//				System.out.println(ThreadName+": Indexing to directory '" + dir + "'...");
-//
-//				//Directory dir = FSDirectory.open(Paths.get(indexPath+"/"+ThreadName));
-//
-//				Analyzer analyzer = new StandardAnalyzer();
-//				IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
-//
-//				if (create) {
-//					iwc.setOpenMode(OpenMode.CREATE);
-//				} else {
-//					// Add new documents to an existing index:
-//					iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-//				}
-//
-//				IndexWriter writer = new IndexWriter(dir, iwc);
-//				//Do indexDoc to every file of folder (como indexDocs)
-//				indexDocs(writer,folder,ThreadName);
-//
-//				writer.close();
-//
-//			} catch (IOException e) {
-//				System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
-//			}
-//			//-----------------------------------------------------------------
-//
-//		}
-//
-//	}
+	public static class WorkerThread implements Runnable {
+
+		private final Path folder;
+
+		public WorkerThread(final Path folder) {
+			this.folder = folder;
+		}
+
+		/**
+		 * This is the work that the current thread will do when processed by the pool.
+		 * In this case, it will only print some information.
+		 */
+		@Override
+		public void run() {
+			String ThreadName = Thread.currentThread().getName();
+
+			System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
+					Thread.currentThread().getName(), folder));
+
+			//-----------------------------------------------------------------
+			try {
+				System.out.println(ThreadName+": Indexing to directory '" + folder + "'...");
+
+				//Directory dir = FSDirectory.open(Paths.get(indexPath+"/"+ThreadName));
+
+				Analyzer analyzer = new StandardAnalyzer();
+				IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+
+				if (create) {
+					iwc.setOpenMode(OpenMode.CREATE);
+				} else {
+					// Add new documents to an existing index:
+					iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
+				}
+
+				IndexWriter writer = new IndexWriter((Directory) folder, iwc);
+				//Do indexDoc to every file of folder (como indexDocs)
+				indexDocs(writer,folder,ThreadName);
+
+				writer.close();
+
+			} catch (IOException e) {
+				System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
+			}
+			//-----------------------------------------------------------------
+
+		}
+
+	}
 
     private static void readConfigFile(String path) {
 
@@ -289,7 +289,7 @@ public class IndexFiles {
      *               files to index
      * @throws IOException If there is a low-level I/O error
      */
-    static void indexDocs(final IndexWriter writer, Path path) throws IOException {
+    static void indexDocs(final IndexWriter writer, Path path, String threadName) throws IOException {
         if (Files.isDirectory(path)) {
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
                 @Override
