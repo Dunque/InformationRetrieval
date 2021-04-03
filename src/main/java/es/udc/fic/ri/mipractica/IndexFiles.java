@@ -1,30 +1,25 @@
 package es.udc.fic.ri.mipractica;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
+import org.apache.lucene.document.*;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.MMapDirectory;
 
 /**
  * Index all text files under a directory.
@@ -48,7 +43,7 @@ public class IndexFiles {
 
     static int topLines = 0;
     static int bottomLines = 0;
-    //final ExecutorService executor = Executors.newFixedThreadPool(numCores);
+    static ExecutorService executor = Executors.newFixedThreadPool(numThreads);
 
     private IndexFiles() {
     }
@@ -107,60 +102,92 @@ public class IndexFiles {
             }
         }
 
+//        if (!partialIndex)
+//            for (Path p : docsPath)
+//                indexDocs(mainWriter, p);
+
+        final Path docDir = null;
+
+        List<MMapDirectory> dirList = new ArrayList<MMapDirectory>();
+
         Date start = new Date();
-        try {
-            System.out.println("Indexing to directory '" + indexPath + "'...");
 
-            Directory dir = FSDirectory.open(Paths.get(indexPath));
-            Analyzer analyzer = new StandardAnalyzer();
-            IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+        MMapDirectory mmapdir = null;
+        int i = 0;
 
-            if (create) {
-                // Create a new index in the directory, removing any
-                // previously indexed documents:
-                iwc.setOpenMode(OpenMode.CREATE);
-            } else {
-                // Add new documents to an existing index:
-                iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
+        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(docDir)) {
+            mmapdir = new MMapDirectory(Paths.get("/tmp/LuceneIndex"));
+            dirList.add(mmapdir);
+
+            final Runnable mainWorker = new WorkerThread(docDir, mmapdir);
+            executor.execute(mainWorker);
+            for (final Path path : directoryStream) {
+                if (Files.isDirectory(path)) {
+                    mmapdir = new MMapDirectory(Paths.get("/tmp/LuceneIndex" + i++));
+                    dirList.add(mmapdir);
+
+                    final Runnable worker = new WorkerThread(path, mmapdir);
+                    /*
+                     * Send the thread to the ThreadPool. It will be processed eventually.
+                     */
+                    executor.execute(worker);
+                }
             }
+        } catch (final IOException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        }
 
-            // Optional: for better indexing performance, if you
-            // are indexing many documents, increase the RAM
-            // buffer. But if you do this, increase the max heap
-            // size to the JVM (eg add -Xmx512m or -Xmx1g):
-            //
-            // iwc.setRAMBufferSizeMB(256.0);
+        /*
+         * Close the ThreadPool; no more jobs will be accepted, but all the previously
+         * submitted jobs will be processed.
+         */
+        executor.shutdown();
+        /* Wait up to 1 hour to finish all the previously submitted jobs */
+        try {
+            executor.awaitTermination(1, TimeUnit.HOURS);
+        } catch (final InterruptedException e) {
+            e.printStackTrace();
+            System.exit(-2);
+        } finally {
+            //Merge directories
+            System.out.println("Merging indexes into " + indexPath);
+            IndexWriterConfig iconfig = new IndexWriterConfig(new StandardAnalyzer());
 
-            IndexWriter writer = new IndexWriter(dir, iwc);
+            if (create)
+                iconfig.setOpenMode(OpenMode.CREATE);
+            else
+                iconfig.setOpenMode(OpenMode.CREATE_OR_APPEND);
 
-            for (Path path : docsPath)
-                indexDocs(writer, path);
+            IndexWriter ifusedwriter = null;
 
-            // NOTE: if you want to maximize search performance,
-            // you can optionally call forceMerge here. This can be
-            // a terribly costly operation, so generally it's only
-            // worth it when your index is relatively static (ie
-            // you're done adding documents to it):
-            //
-            // writer.forceMerge(1);
-
-            writer.close();
+            try {
+                Directory dir = FSDirectory.open(Paths.get(indexPath));
+                ifusedwriter = new IndexWriter(dir, iconfig);
+                for (MMapDirectory tmp : dirList) {
+                    ifusedwriter.addIndexes(tmp);
+                }
+                ifusedwriter.commit();
+                ifusedwriter.close();
+            } catch (IOException e) {
+                System.out.println(" caught a " + e.getClass() + "\n with message: " + e.getMessage());
+            }
 
             Date end = new Date();
             System.out.println(end.getTime() - start.getTime() + " total milliseconds");
 
-        } catch (IOException e) {
-            System.out.println(" caught a " + e.getClass() + " with message: " + e.getMessage());
         }
     }
 
 	public static class WorkerThread implements Runnable {
 
 		private final Path folder;
+		private final MMapDirectory dir;
 
-		public WorkerThread(final Path folder) {
+		public WorkerThread(final Path folder, final MMapDirectory dir) {
 			this.folder = folder;
-		}
+            this.dir = dir;
+        }
 
 		/**
 		 * This is the work that the current thread will do when processed by the pool.
@@ -172,10 +199,9 @@ public class IndexFiles {
 
 			System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
 					Thread.currentThread().getName(), folder));
-
-			//-----------------------------------------------------------------
+			
 			try {
-				System.out.println(ThreadName+": Indexing to directory '" + folder + "'...");
+				System.out.println(ThreadName+": Indexing to directory '" + dir + "'...");
 
 				//Directory dir = FSDirectory.open(Paths.get(indexPath+"/"+ThreadName));
 
@@ -189,7 +215,7 @@ public class IndexFiles {
 					iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
 				}
 
-				IndexWriter writer = new IndexWriter((Directory) folder, iwc);
+				IndexWriter writer = new IndexWriter(dir, iwc);
 				//Do indexDoc to every file of folder (como indexDocs)
 				indexDocs(writer,folder,ThreadName);
 
@@ -198,8 +224,6 @@ public class IndexFiles {
 			} catch (IOException e) {
 				System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
 			}
-			//-----------------------------------------------------------------
-
 		}
 
 	}
@@ -290,65 +314,56 @@ public class IndexFiles {
      * @throws IOException If there is a low-level I/O error
      */
     static void indexDocs(final IndexWriter writer, Path path, String threadName) throws IOException {
-        if (Files.isDirectory(path)) {
-            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+
+        Files.walkFileTree(path,new HashSet<>(),1, new SimpleFileVisitor<Path>() {
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                if (!Files.isDirectory(file)) {
                     try {
-                        indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
+                        indexDoc(writer, file, attrs.lastModifiedTime().toMillis(), threadName);
                     } catch (IOException ignore) {
                         // don't index files that can't be read.
+                        System.out.println("File " + file + " couldn't be indexed");
                     }
-                    return FileVisitResult.CONTINUE;
                 }
-            });
-        } else {
-            indexDoc(writer, path, Files.getLastModifiedTime(path).toMillis());
-        }
+				return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     /**
      * Indexes a single document
      */
-    static void indexDoc(IndexWriter writer, Path file, long lastModified) throws IOException {
+    static void indexDoc(IndexWriter writer, Path file, long lastModified, String threadName) throws IOException {
         try (InputStream stream = Files.newInputStream(file)) {
             // make a new, empty document
             Document doc = new Document();
 
-            // Add the path of the file as a field named "path". Use a
-            // field that is indexed (i.e. searchable), but don't tokenize
-            // the field into separate words and don't index term frequency
-            // or positional information:
             Field pathField = new StringField("path", file.toString(), Field.Store.YES);
             doc.add(pathField);
-
-            // Add the last modified date of the file a field named "modified".
-            // Use a LongPoint that is indexed (i.e. efficiently filterable with
-            // PointRangeQuery). This indexes to milli-second resolution, which
-            // is often too fine. You could instead create a number based on
-            // year/month/day/hour/minutes/seconds, down the resolution you require.
-            // For example the long value 2011021714 would mean
-            // February 17, 2011, 2-3 PM.
             doc.add(new LongPoint("modified", lastModified));
-
-            // Add the contents of the file to a field named "contents". Specify a Reader,
-            // so that the text of the file is tokenized and indexed, but not stored.
-            // Note that FileReader expects the file to be in UTF-8 encoding.
-            // If that's not the case searching for special characters will fail.
             doc.add(new TextField("contents",
                     new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+            doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
+            doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
+            doc.add(new DoublePoint("sizeKb", (double) (new File(file.toString()).length() / 1024)));
+
+            //faltan los de  lines y bottom lines
 
             if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
                 // New index, so we just add the document (no old document can be there):
-                System.out.println("adding " + file);
+                System.out.println(threadName + ": adding " + file);
                 writer.addDocument(doc);
             } else {
                 // Existing index (an old copy of this document may have been indexed) so
                 // we use updateDocument instead to replace the old one matching the exact
                 // path, if present:
-                System.out.println("updating " + file);
+                System.out.println(threadName + ": updating " + file);
                 writer.updateDocument(new Term("path", file.toString()), doc);
             }
         }
     }
 }
+
+
