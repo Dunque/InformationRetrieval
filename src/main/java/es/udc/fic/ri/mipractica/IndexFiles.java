@@ -11,6 +11,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -133,8 +134,12 @@ public class IndexFiles {
 
             IndexWriter writer = new IndexWriter(dir, iwc);
 
-            for (Path path : docsPath)
-                indexDocs(writer, path);
+    		final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+
+    		for (Path path : docsPath) {
+    			final Runnable worker = new WorkerThread(path,writer);
+    			executor.execute(worker);
+    		}
 
             // NOTE: if you want to maximize search performance,
             // you can optionally call forceMerge here. This can be
@@ -144,7 +149,17 @@ public class IndexFiles {
             //
             // writer.forceMerge(1);
 
-            writer.close();
+            //writer.close();
+            
+            executor.shutdown();
+
+    		/* Wait up to 1 hour to finish all the previously submitted jobs */
+    		try {
+    			executor.awaitTermination(1, TimeUnit.HOURS);
+    		} catch (final InterruptedException e) {
+    			e.printStackTrace();
+    			System.exit(-2);
+    		}
 
             Date end = new Date();
             System.out.println(end.getTime() - start.getTime() + " total milliseconds");
@@ -157,9 +172,11 @@ public class IndexFiles {
 	public static class WorkerThread implements Runnable {
 
 		private final Path folder;
+		private IndexWriter writer;
 
-		public WorkerThread(final Path folder) {
+		public WorkerThread(final Path folder, IndexWriter writer) {
 			this.folder = folder;
+			this.writer=writer;
 		}
 
 		/**
@@ -177,22 +194,8 @@ public class IndexFiles {
 			try {
 				System.out.println(ThreadName+": Indexing to directory '" + folder + "'...");
 
-				//Directory dir = FSDirectory.open(Paths.get(indexPath+"/"+ThreadName));
-
-				Analyzer analyzer = new StandardAnalyzer();
-				IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
-
-				if (create) {
-					iwc.setOpenMode(OpenMode.CREATE);
-				} else {
-					// Add new documents to an existing index:
-					iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-				}
-
-				IndexWriter writer = new IndexWriter((Directory) folder, iwc);
-				//Do indexDoc to every file of folder (como indexDocs)
 				indexDocs(writer,folder,ThreadName);
-
+				writer.commit();
 				writer.close();
 
 			} catch (IOException e) {
@@ -239,8 +242,8 @@ public class IndexFiles {
                 partialIndexes.add(partIndex);
             }
         } else {
-            System.out.println("Error in the config file, there are no partial index paths");
-            System.exit(-1);
+            //System.out.println("Error in the config file, there are no partial index paths");
+            //System.exit(-1);
         }
 
         //Reading the allowed file types
