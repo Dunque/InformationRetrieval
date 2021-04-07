@@ -131,11 +131,11 @@ public class IndexFiles {
 
             IndexWriter writer = new IndexWriter(dir, iwc);
 
-    		final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+            final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
 
-    		List<Path> docsPathAux = new ArrayList<Path>(docsPath);
-    		ArrayList<Path>[] al = new ArrayList[numThreads];
-    		for (int i = 0; i < numThreads; i++) {
+            List<Path> docsPathAux = new ArrayList<Path>(docsPath);
+            ArrayList<Path>[] al = new ArrayList[numThreads];
+            for (int i = 0; i < numThreads; i++) {
                 al[i] = new ArrayList<Path>();
             }
     		
@@ -161,9 +161,8 @@ public class IndexFiles {
 
 
             //writer.close();
-            
-            executor.shutdown();
 
+            executor.shutdown();
     		/* Wait up to 1 hour to finish all the previously submitted jobs */
     		try {
     			executor.awaitTermination(1, TimeUnit.HOURS);
@@ -187,46 +186,45 @@ public class IndexFiles {
             System.out.println(" caught a " + e.getClass() + " with message: " + e.getMessage());
         }
     }
+    public static class WorkerThread extends Thread {
 
-	public static class WorkerThread extends Thread {
+        private final List<Path> folders;
+        private IndexWriter writer;
 
-		private final List<Path> folders;
-		private IndexWriter writer;
+        public WorkerThread(final List<Path> folders, IndexWriter writer) {
+            this.folders = folders;
+            this.writer = writer;
+        }
 
-		public WorkerThread(final List<Path> folders, IndexWriter writer) {
-			this.folders = folders;
-			this.writer=writer;
-		}
+        /**
+         * This is the work that the current thread will do when processed by the pool.
+         * In this case, it will only print some information.
+         */
+        @Override
+        public void run() {
+            for (Path path : folders) {
+                String ThreadName = Thread.currentThread().getName();
 
-		/**
-		 * This is the work that the current thread will do when processed by the pool.
-		 * In this case, it will only print some information.
-		 */
-		@Override
-		public void run() {
-			for (Path path : folders) {
-				String ThreadName = Thread.currentThread().getName();
+                System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
+                        Thread.currentThread().getName(), path));
 
-				System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
-						Thread.currentThread().getName(), path));
+                //-----------------------------------------------------------------
+                try {
+                    System.out.println(ThreadName + ": Indexing to directory '" + path + "'...");
 
-				//-----------------------------------------------------------------
-				try {
-					System.out.println(ThreadName+": Indexing to directory '" + path + "'...");
+                    indexDocs(writer, path, ThreadName);
 
-					indexDocs(writer,path,ThreadName);
-					
 
-				} catch (IOException e) {
-					System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
-				}
-				//-----------------------------------------------------------------
-			}
-			
+                } catch (IOException e) {
+                    System.out.println(ThreadName + ": caught a " + e.getClass() + "\n with message: " + e.getMessage());
+                }
+                //-----------------------------------------------------------------
+            }
 
-		}
 
-	}
+        }
+
+    }
 
     private static void readConfigFile(String path) {
 
@@ -296,32 +294,39 @@ public class IndexFiles {
         }
     }
 
-    /**
-     * Indexes the given file using the given writer, or if a directory is given,
-     * recurses over files and directories found under the given directory.
-     * <p>
-     * NOTE: This method indexes one document per input file. This is slow. For good
-     * throughput, put multiple documents into your input file(s). An example of
-     * this is in the benchmark module, which can create "line doc" files, one
-     * document per line, using the <a href=
-     * "../../../../../contrib-benchmark/org/apache/lucene/benchmark/byTask/tasks/WriteLineDocTask.html"
-     * >WriteLineDocTask</a>.
-     *
-     * @param writer Writer to the index where the given file/dir info will be
-     *               stored
-     * @param path   The file to index, or the directory to recurse into to find
-     *               files to index
-     * @throws IOException If there is a low-level I/O error
-     */
+    private static String getExtension(File file) {
+        String fileName = file.getName();
+        //Si el archivo tiene un . tomamos los caracteres de despues del punto
+        if (fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0) {
+            return fileName.substring(fileName.lastIndexOf("."));
+        } else {
+            return "";
+        }
+    }
+
     static void indexDocs(final IndexWriter writer, Path path, String threadName) throws IOException {
         if (Files.isDirectory(path)) {
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    try {
-                        indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
-                    } catch (IOException ignore) {
-                        // don't index files that can't be read.
+                    if (onlyFiles) {
+                        // We check what type of file is this
+                        String fileType = getExtension(file.toFile());
+
+                        // If the file extension is included add it
+                        if (fileTypes.contains(fileType)) {
+                            try {
+                                indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
+                            } catch (IOException ignore) {
+                                // don't index files that can't be read.
+                            }
+                        }
+                    } else {
+                        try {
+                            indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
+                        } catch (IOException ignore) {
+                            // don't index files that can't be read.
+                        }
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -361,4 +366,71 @@ public class IndexFiles {
             }
         }
     }
+
+//    static void indexMulti(IndexWriter writer){
+//        final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+//
+//        List<Path> docsPathAux = new ArrayList<Path>(docsPath);
+//        ArrayList<Path>[] al = new ArrayList[numThreads];
+//        for (int i = 0; i < numThreads; i++) {
+//            al[i] = new ArrayList<Path>();
+//        }
+//
+//        while (!docsPathAux.isEmpty()) {
+//            for (int i = 0; i < numThreads; i++) {
+//                if (docsPathAux.size() > 0 && docsPathAux.get(0) != null) {
+//                    Path partialIndexPath = partialIndexes.get(j);
+//                    FSDirectory partialIndexDir = FSDirectory.open(partialIndexPath);
+//                    System.out.println("Sending " + p + " to be indexed in " + partialIndexPath);
+//                    final Runnable worker = new WorkerThread(al[i], partialIndexDir);
+//                    executor.execute(worker);
+//                    j++;
+//                    al[i].add(docsPathAux.get(0));
+//                    docsPathAux.remove(0);
+//                }
+//            }
+//        }
+//
+//        for (int i = 0; i < numThreads; i++) {
+//            final Runnable worker = new WorkerThread(al[i], writer);
+//            executor.execute(worker);
+//        }
+//
+//        //Para todos los PATHS indicados en IndexFiles.config
+//        try{
+//            for (Path p:docsPathAux){
+//                Path partialIndexPath = partialIndexes.get(j);
+//                FSDirectory partialIndexDir = FSDirectory.open(partialIndexPath);
+//                System.out.println("Sending " + p + " to be indexed in " + partialIndexPath);
+//                final Runnable worker = new WorkerThread(p, partialIndexDir);
+//                executor.execute(worker);
+//                j++;
+//            }
+//        }
+//        catch (Exception e){
+//            error("Error during multithread Indexing "+e);
+//        }
+//        //Cerramos el pool de ejecutores
+//        executor.shutdown();
+//
+//        //Le damos 1h para terminar la tarea
+//        try {
+//            executor.awaitTermination(1, TimeUnit.HOURS);
+//        }
+//        catch (final InterruptedException e) {
+//            error("Timeout during index creation: "+e);
+//            System.exit(-2);
+//        }
+//        finally {
+//            //Fusionamos los indices temporales
+//            debug("Merging indexes into "+indexPath);
+//            try {
+//                for (FSDirectory tmp : directory_list) {
+//                    mainWriter.addIndexes(tmp);
+//                }
+//            } catch (IOException e) {
+//                error("Error during indexes merge: "+e);
+//            }
+//        }
+//    }
 }
