@@ -136,18 +136,31 @@ public class IndexFiles {
 
     		final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
 
-    		for (Path path : docsPath) {
-    			final Runnable worker = new WorkerThread(path,writer);
+    		List<Path> docsPathAux = new ArrayList<Path>(docsPath);
+    		ArrayList<Path>[] al = new ArrayList[numThreads];
+    		for (int i = 0; i < numThreads; i++) {
+                al[i] = new ArrayList<Path>();
+            }
+    		
+    		while(!docsPathAux.isEmpty()) {
+    			for(int i = 0;i<numThreads;i++) {
+    				if(docsPathAux.size()>0 && docsPathAux.get(0)!=null) {
+    					al[i].add(docsPathAux.get(0));
+    					docsPathAux.remove(0);
+    				}
+    			}
+    		}
+    		
+    		for(int i = 0; i<numThreads;i++) {
+    			final Runnable worker = new WorkerThread(al[i],writer);
     			executor.execute(worker);
     		}
+    		
+    		//for (Path path : docsPath) {
+    		//	final Runnable worker = new WorkerThread(path,writer);
+    		//	executor.execute(worker);
+    		//}
 
-            // NOTE: if you want to maximize search performance,
-            // you can optionally call forceMerge here. This can be
-            // a terribly costly operation, so generally it's only
-            // worth it when your index is relatively static (ie
-            // you're done adding documents to it):
-            //
-            // writer.forceMerge(1);
 
             //writer.close();
             
@@ -169,13 +182,13 @@ public class IndexFiles {
         }
     }
 
-	public static class WorkerThread implements Runnable {
+	public static class WorkerThread extends Thread {
 
-		private final Path folder;
+		private final List<Path> folders;
 		private IndexWriter writer;
 
-		public WorkerThread(final Path folder, IndexWriter writer) {
-			this.folder = folder;
+		public WorkerThread(final List<Path> folders, IndexWriter writer) {
+			this.folders = folders;
 			this.writer=writer;
 		}
 
@@ -185,23 +198,32 @@ public class IndexFiles {
 		 */
 		@Override
 		public void run() {
-			String ThreadName = Thread.currentThread().getName();
+			for (Path path : folders) {
+				String ThreadName = Thread.currentThread().getName();
 
-			System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
-					Thread.currentThread().getName(), folder));
+				System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
+						Thread.currentThread().getName(), path));
 
-			//-----------------------------------------------------------------
+				//-----------------------------------------------------------------
+				try {
+					System.out.println(ThreadName+": Indexing to directory '" + path + "'...");
+
+					indexDocs(writer,path,ThreadName);
+					
+
+				} catch (IOException e) {
+					System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
+				}
+				//-----------------------------------------------------------------
+			}
 			try {
-				System.out.println(ThreadName+": Indexing to directory '" + folder + "'...");
-
-				indexDocs(writer,folder,ThreadName);
 				writer.commit();
 				writer.close();
-
 			} catch (IOException e) {
-				System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			//-----------------------------------------------------------------
+			
 
 		}
 
