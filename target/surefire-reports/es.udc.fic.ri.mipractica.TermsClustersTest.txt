@@ -1,8 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: es.udc.fic.ri.mipractica.TermsClustersTest
 -------------------------------------------------------------------------------
-<<<<<<< HEAD
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.12 s - in es.udc.fic.ri.mipractica.TermsClustersTest
-=======
-Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.085 s - in es.udc.fic.ri.mipractica.TermsClustersTest
->>>>>>> ae1e92cbe264581c75b3f5f85291c407e411eced
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.118 s - in es.udc.fic.ri.mipractica.TermsClustersTest

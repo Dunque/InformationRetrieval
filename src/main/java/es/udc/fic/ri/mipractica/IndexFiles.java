@@ -148,6 +148,7 @@ public class IndexFiles {
     			}
     		}
     		
+    		
     		for(int i = 0; i<numThreads;i++) {
     			final Runnable worker = new WorkerThread(al[i],writer);
     			executor.execute(worker);
@@ -170,6 +171,14 @@ public class IndexFiles {
     			e.printStackTrace();
     			System.exit(-2);
     		}
+    		
+    		try {
+				writer.commit();
+				writer.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
             Date end = new Date();
             System.out.println(end.getTime() - start.getTime() + " total milliseconds");
@@ -212,13 +221,6 @@ public class IndexFiles {
 					System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
 				}
 				//-----------------------------------------------------------------
-			}
-			try {
-				writer.commit();
-				writer.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 			
 
