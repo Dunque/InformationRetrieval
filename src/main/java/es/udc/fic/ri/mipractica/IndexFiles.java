@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -351,7 +352,12 @@ public class IndexFiles {
                     new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
             doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
             doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
-            doc.add(new StoredField("sizeKb", (double) Files.size(file))); 
+            doc.add(new StoredField("sizeKb", (double) Files.size(file)));
+            
+            FileTime fileTime = (FileTime) Files.getAttribute(file, "creationTime");
+            Date dateTime = new Date(fileTime.toMillis());
+            String creationTime = DateTools.dateToString(dateTime,DateTools.Resolution.MINUTE);
+            doc.add(new StringField("creationTime", creationTime, Field.Store.YES));
 
             if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
                 // New index, so we just add the document (no old document can be there):
