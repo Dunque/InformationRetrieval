@@ -344,6 +344,8 @@ public class IndexFiles {
             doc.add(new StringField("lastModifiedTime", lastModifiedTime, Field.Store.YES));
 
             if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
+            	if(!create)
+            		System.out.println("Warning, update in create mode is not possible");
                 // New index, so we just add the document (no old document can be there):
                 System.out.println(Thread.currentThread().getName() + " adding " + file);
                 writer.addDocument(doc);
@@ -351,8 +353,14 @@ public class IndexFiles {
                 // Existing index (an old copy of this document may have been indexed) so
                 // we use updateDocument instead to replace the old one matching the exact
                 // path, if present:
-                System.out.println(Thread.currentThread().getName() + " updating " + file);
-                writer.updateDocument(new Term("path", file.toString()), doc);
+            	if(create) {
+            		System.out.println(Thread.currentThread().getName() + " adding " + file);
+                    writer.addDocument(doc);
+            	}else {
+            		System.out.println(Thread.currentThread().getName() + " updating " + file);
+            		writer.updateDocument(new Term("path", file.toString()), doc);
+            	}
+            	
             }
         }
     }
@@ -492,15 +500,17 @@ public class IndexFiles {
             Directory dir = FSDirectory.open(Paths.get(indexPath));
             Analyzer analyzer = new StandardAnalyzer();
             IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+            
+            iwc.setOpenMode(openmode);
 
-            if (create) {
+            /*if (create) {
                 // Create a new index in the directory, removing any
                 // previously indexed documents:
                 iwc.setOpenMode(OpenMode.CREATE);
             } else {
                 // Add new documents to an existing index:
                 iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-            }
+            }*/
 
             // Optional: for better indexing performance, if you
             // are indexing many documents, increase the RAM
