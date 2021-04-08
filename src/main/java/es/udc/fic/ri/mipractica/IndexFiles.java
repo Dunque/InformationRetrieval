@@ -351,7 +351,7 @@ public class IndexFiles {
                     new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
             doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
             doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
-            doc.add(new DoublePoint("sizeKb", (double) (new File(file.toString()).length() / 1024)));
+            doc.add(new StoredField("sizeKb", (double) Files.size(file))); 
 
             if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
                 // New index, so we just add the document (no old document can be there):
