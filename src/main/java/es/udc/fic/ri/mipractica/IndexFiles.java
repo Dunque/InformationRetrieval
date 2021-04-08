@@ -226,12 +226,9 @@ public class IndexFiles {
 
     private static String getExtension(File file) {
         String fileName = file.getName();
-        //Si el archivo tiene un . (y no es un ".") tomamos los caracteres de despues del punto
-        if (fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0) {
-            return fileName.substring(fileName.lastIndexOf("."));
-        } else {
-            return "";
-        }
+        if(fileName.contains("."))
+        	return fileName.substring(fileName.indexOf("."));
+        return null;
     }
 
     private static String readNLines(String file, int ntop, int nbot, String mode) throws IOException {
@@ -283,16 +280,10 @@ public class IndexFiles {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     if (onlyFiles) {
-                        // We check what type of file is this
-                        String fileType = getExtension(file.toFile());
-
-                        // If the file extension is included add it
-                        if (fileTypes.contains(fileType)) {
-                            try {
-                                indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
-                            } catch (IOException ignore) {
-                                // don't index files that can't be read.
-                            }
+                        try {
+                            indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
+                        } catch (IOException ignore) {
+                            // don't index files that can't be read.
                         }
                     } else {
                         try {
@@ -310,59 +301,60 @@ public class IndexFiles {
     }
 
     static void indexDoc(IndexWriter writer, Path file, long lastModified) throws IOException {
-        try (InputStream stream = Files.newInputStream(file)) {
-            // make a new, empty document
-            Document doc = new Document();
+    	if(fileTypes.isEmpty() || fileTypes.contains(getExtension(file.toFile()))) {
+    		try (InputStream stream = Files.newInputStream(file)) {
+                // make a new, empty document
+                Document doc = new Document();
 
-            Field pathField = new StringField("path", file.toString(), Field.Store.YES);
-            doc.add(pathField);
-            doc.add(new LongPoint("modified", lastModified));
+                Field pathField = new StringField("path", file.toString(), Field.Store.YES);
+                doc.add(pathField);
+                doc.add(new LongPoint("modified", lastModified));
 
-            if (topLines != 0){
-                if(bottomLines != 0)
-                    doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "topbot"))));
-                else
-                    doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "top"))));
-            } else {
-                if(bottomLines != 0)
-                    doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "bot"))));
-                else
-                    doc.add(new TextField("contents",
-                            new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
-            }
+                if (topLines != 0){
+                    if(bottomLines != 0)
+                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "topbot"))));
+                    else
+                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "top"))));
+                } else {
+                    if(bottomLines != 0)
+                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "bot"))));
+                    else
+                        doc.add(new TextField("contents",
+                                new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+                }
 
-            doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
-            doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
-            doc.add(new StoredField("sizeKb", (double) Files.size(file)));
+                doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
+                doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
+                doc.add(new StoredField("sizeKb", (double) Files.size(file)));
 
-            BasicFileAttributeView basicView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
-            String creationTime = DateTools.dateToString(new Date(basicView.readAttributes().creationTime().toMillis()), DateTools.Resolution.MINUTE);
-            String lastAccessTime = DateTools.dateToString(new Date(basicView.readAttributes().lastAccessTime().toMillis()), DateTools.Resolution.MINUTE);
-            String lastModifiedTime = DateTools.dateToString(new Date(basicView.readAttributes().lastModifiedTime().toMillis()), DateTools.Resolution.MINUTE);
-            doc.add(new StringField("creationTime", creationTime, Field.Store.YES));
-            doc.add(new StringField("lastAccessTime", lastAccessTime, Field.Store.YES));
-            doc.add(new StringField("lastModifiedTime", lastModifiedTime, Field.Store.YES));
-
-            if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
-            	if(!create)
-            		System.out.println("Warning, update in create mode is not possible");
-                // New index, so we just add the document (no old document can be there):
-                System.out.println(Thread.currentThread().getName() + " adding " + file);
-                writer.addDocument(doc);
-            } else {
-                // Existing index (an old copy of this document may have been indexed) so
-                // we use updateDocument instead to replace the old one matching the exact
-                // path, if present:
-            	if(create) {
-            		System.out.println(Thread.currentThread().getName() + " adding " + file);
+                BasicFileAttributeView basicView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
+                String creationTime = DateTools.dateToString(new Date(basicView.readAttributes().creationTime().toMillis()), DateTools.Resolution.MINUTE);
+                String lastAccessTime = DateTools.dateToString(new Date(basicView.readAttributes().lastAccessTime().toMillis()), DateTools.Resolution.MINUTE);
+                String lastModifiedTime = DateTools.dateToString(new Date(basicView.readAttributes().lastModifiedTime().toMillis()), DateTools.Resolution.MINUTE);
+                doc.add(new StringField("creationTime", creationTime, Field.Store.YES));
+                doc.add(new StringField("lastAccessTime", lastAccessTime, Field.Store.YES));
+                doc.add(new StringField("lastModifiedTime", lastModifiedTime, Field.Store.YES));
+                if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
+                	if(!create)
+                		System.out.println("Warning, update in create mode is not possible");
+                    // New index, so we just add the document (no old document can be there):
+                    System.out.println(Thread.currentThread().getName() + " adding " + file);
                     writer.addDocument(doc);
-            	}else {
-            		System.out.println(Thread.currentThread().getName() + " updating " + file);
-            		writer.updateDocument(new Term("path", file.toString()), doc);
-            	}
-            	
+                } else {
+                    // Existing index (an old copy of this document may have been indexed) so
+                    // we use updateDocument instead to replace the old one matching the exact
+                    // path, if present:
+                	if(create) {
+                		System.out.println(Thread.currentThread().getName() + " adding " + file);
+                        writer.addDocument(doc);
+                	}else {
+                		System.out.println(Thread.currentThread().getName() + " updating " + file);
+                		writer.updateDocument(new Term("path", file.toString()), doc);
+                	}
+                	
+                }
             }
-        }
+    	}
     }
 
     public static void indexNonPartial(IndexWriter writer) {
