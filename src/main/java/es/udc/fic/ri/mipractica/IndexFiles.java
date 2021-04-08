@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.util.*;
@@ -354,10 +355,13 @@ public class IndexFiles {
             doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
             doc.add(new StoredField("sizeKb", (double) Files.size(file)));
             
-            FileTime fileTime = (FileTime) Files.getAttribute(file, "creationTime");
-            Date dateTime = new Date(fileTime.toMillis());
-            String creationTime = DateTools.dateToString(dateTime,DateTools.Resolution.MINUTE);
+            BasicFileAttributeView basicView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
+			String creationTime = DateTools.dateToString(new Date(basicView.readAttributes().creationTime().toMillis()),DateTools.Resolution.MINUTE);
+			String lastAccessTime = DateTools.dateToString(new Date(basicView.readAttributes().lastAccessTime().toMillis()),DateTools.Resolution.MINUTE);
+			String lastModifiedTime = DateTools.dateToString(new Date(basicView.readAttributes().lastModifiedTime().toMillis()),DateTools.Resolution.MINUTE);
             doc.add(new StringField("creationTime", creationTime, Field.Store.YES));
+            doc.add(new StringField("lastAccessTime", lastAccessTime, Field.Store.YES));
+            doc.add(new StringField("lastModifiedTime", lastModifiedTime, Field.Store.YES));
 
             if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
                 // New index, so we just add the document (no old document can be there):
