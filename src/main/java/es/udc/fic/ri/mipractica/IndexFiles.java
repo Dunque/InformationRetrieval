@@ -3,8 +3,14 @@ package es.udc.fic.ri.mipractica;
 import java.io.*;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,7 +25,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.MMapDirectory;
 
 /**
  * Index all text files under a directory.
@@ -29,7 +34,72 @@ import org.apache.lucene.store.MMapDirectory;
  */
 public class IndexFiles {
 
-    static final String DEFAULT_PATH = "./config.properties";
+    private static class WorkerThread extends Thread {
+
+        private final List<Path> folders;
+        private IndexWriter writer;
+        private List<FSDirectory> partialDirs = new ArrayList<>();
+
+        //Used in IndexNonPartial
+        public WorkerThread(final List<Path> folders, IndexWriter writer) {
+            this.folders = folders;
+            this.writer = writer;
+        }
+
+        //Used in IndexPartial
+        public WorkerThread(final List<Path> folders, List<FSDirectory> partialDirs) {
+            this.folders = folders;
+            this.partialDirs = partialDirs;
+        }
+
+        @Override
+        public void run() {
+            String ThreadName = Thread.currentThread().getName();
+
+            //Used in IndexNonPartial
+            if (partialDirs.size() == 0) {
+                for (Path path : folders) {
+
+                    System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
+                            Thread.currentThread().getName(), path));
+                    try {
+                        System.out.println(ThreadName + ": Indexing to directory '" + path + "'...");
+                        indexDocs(writer, path);
+                    } catch (IOException e) {
+                        System.out.println(ThreadName + ": caught a " + e.getClass() + "with message: " + e.getMessage());
+                    }
+                }
+            }
+            //Used in IndexPartial
+            else {
+                try {
+                    Analyzer analyzer = new StandardAnalyzer();
+                    IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+
+                    for (int i = 0; i < folders.size(); i++) {
+
+                        IndexWriter writer = new IndexWriter(partialDirs.get(i), iwc);
+
+                        System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
+                                Thread.currentThread().getName(), folders.get(i)));
+                        try {
+                            System.out.println(ThreadName + ": Indexing to directory '" + partialDirs.get(i) + "'...");
+                            indexDocs(writer, folders.get(i));
+                        } catch (IOException e) {
+                            System.out.println(ThreadName + ": caught a " + e.getClass() + "with message:" + e.getMessage());
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+
+        }
+
+    }
+
+    static final String DEFAULT_PATH = "../src/main/resources/config.properties";
 
     static String indexPath = "index"; //default index path is a folder named index located in the root dir
     static boolean create = true; //Create true == Update false
@@ -43,7 +113,7 @@ public class IndexFiles {
 
     static int topLines = 0;
     static int bottomLines = 0;
-    static ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+    //final ExecutorService executor = Executors.newFixedThreadPool(numCores);
 
     private IndexFiles() {
     }
@@ -86,148 +156,6 @@ public class IndexFiles {
         }
     }
 
-    /**
-     * Index all text files under a directory.
-     */
-    public static void main(String[] args) {
-
-        parseArguments(args);
-        readConfigFile(DEFAULT_PATH);
-
-        for (Path path : docsPath) {
-            if (!Files.isReadable(path)) {
-                System.out.println("Document directory '" + path.toAbsolutePath()
-                        + "' does not exist or is not readable, please check the path");
-                System.exit(1);
-            }
-        }
-
-//        if (!partialIndex)
-//            for (Path p : docsPath)
-//                indexDocs(mainWriter, p);
-
-        final Path docDir = null;
-
-        List<MMapDirectory> dirList = new ArrayList<MMapDirectory>();
-
-        Date start = new Date();
-
-        MMapDirectory mmapdir = null;
-        int i = 0;
-
-        try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(docDir)) {
-            mmapdir = new MMapDirectory(Paths.get("/tmp/LuceneIndex"));
-            dirList.add(mmapdir);
-
-            final Runnable mainWorker = new WorkerThread(docDir, mmapdir);
-            executor.execute(mainWorker);
-            for (final Path path : directoryStream) {
-                if (Files.isDirectory(path)) {
-                    mmapdir = new MMapDirectory(Paths.get("/tmp/LuceneIndex" + i++));
-                    dirList.add(mmapdir);
-
-                    final Runnable worker = new WorkerThread(path, mmapdir);
-                    /*
-                     * Send the thread to the ThreadPool. It will be processed eventually.
-                     */
-                    executor.execute(worker);
-                }
-            }
-        } catch (final IOException e) {
-            e.printStackTrace();
-            System.exit(-1);
-        }
-
-        /*
-         * Close the ThreadPool; no more jobs will be accepted, but all the previously
-         * submitted jobs will be processed.
-         */
-        executor.shutdown();
-        /* Wait up to 1 hour to finish all the previously submitted jobs */
-        try {
-            executor.awaitTermination(1, TimeUnit.HOURS);
-        } catch (final InterruptedException e) {
-            e.printStackTrace();
-            System.exit(-2);
-        } finally {
-            //Merge directories
-            System.out.println("Merging indexes into " + indexPath);
-            IndexWriterConfig iconfig = new IndexWriterConfig(new StandardAnalyzer());
-
-            if (create)
-                iconfig.setOpenMode(OpenMode.CREATE);
-            else
-                iconfig.setOpenMode(OpenMode.CREATE_OR_APPEND);
-
-            IndexWriter ifusedwriter = null;
-
-            try {
-                Directory dir = FSDirectory.open(Paths.get(indexPath));
-                ifusedwriter = new IndexWriter(dir, iconfig);
-                for (MMapDirectory tmp : dirList) {
-                    ifusedwriter.addIndexes(tmp);
-                }
-                ifusedwriter.commit();
-                ifusedwriter.close();
-            } catch (IOException e) {
-                System.out.println(" caught a " + e.getClass() + "\n with message: " + e.getMessage());
-            }
-
-            Date end = new Date();
-            System.out.println(end.getTime() - start.getTime() + " total milliseconds");
-
-        }
-    }
-
-	public static class WorkerThread implements Runnable {
-
-		private final Path folder;
-		private final MMapDirectory dir;
-
-		public WorkerThread(final Path folder, final MMapDirectory dir) {
-			this.folder = folder;
-            this.dir = dir;
-        }
-
-		/**
-		 * This is the work that the current thread will do when processed by the pool.
-		 * In this case, it will only print some information.
-		 */
-		@Override
-		public void run() {
-			String ThreadName = Thread.currentThread().getName();
-
-			System.out.println(String.format("I am the thread '%s' and I am responsible for folder '%s'",
-					Thread.currentThread().getName(), folder));
-			
-			try {
-				System.out.println(ThreadName+": Indexing to directory '" + dir + "'...");
-
-				//Directory dir = FSDirectory.open(Paths.get(indexPath+"/"+ThreadName));
-
-				Analyzer analyzer = new StandardAnalyzer();
-				IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
-
-				if (create) {
-					iwc.setOpenMode(OpenMode.CREATE);
-				} else {
-					// Add new documents to an existing index:
-					iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-				}
-
-				IndexWriter writer = new IndexWriter(dir, iwc);
-				//Do indexDoc to every file of folder (como indexDocs)
-				indexDocs(writer,folder,ThreadName);
-
-				writer.close();
-
-			} catch (IOException e) {
-				System.out.println(ThreadName+": caught a " + e.getClass() + "\n with message: " + e.getMessage());
-			}
-		}
-
-	}
-
     private static void readConfigFile(String path) {
 
         FileInputStream inputStream;
@@ -263,8 +191,8 @@ public class IndexFiles {
                 partialIndexes.add(partIndex);
             }
         } else {
-            System.out.println("Error in the config file, there are no partial index paths");
-            System.exit(-1);
+            //System.out.println("Error in the config file, there are no partial index paths");
+            //System.exit(-1);
         }
 
         //Reading the allowed file types
@@ -296,74 +224,315 @@ public class IndexFiles {
         }
     }
 
-    /**
-     * Indexes the given file using the given writer, or if a directory is given,
-     * recurses over files and directories found under the given directory.
-     * <p>
-     * NOTE: This method indexes one document per input file. This is slow. For good
-     * throughput, put multiple documents into your input file(s). An example of
-     * this is in the benchmark module, which can create "line doc" files, one
-     * document per line, using the <a href=
-     * "../../../../../contrib-benchmark/org/apache/lucene/benchmark/byTask/tasks/WriteLineDocTask.html"
-     * >WriteLineDocTask</a>.
-     *
-     * @param writer Writer to the index where the given file/dir info will be
-     *               stored
-     * @param path   The file to index, or the directory to recurse into to find
-     *               files to index
-     * @throws IOException If there is a low-level I/O error
-     */
-    static void indexDocs(final IndexWriter writer, Path path, String threadName) throws IOException {
-
-        Files.walkFileTree(path,new HashSet<>(),1, new SimpleFileVisitor<Path>() {
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (!Files.isDirectory(file)) {
-                    try {
-                        indexDoc(writer, file, attrs.lastModifiedTime().toMillis(), threadName);
-                    } catch (IOException ignore) {
-                        // don't index files that can't be read.
-                        System.out.println("File " + file + " couldn't be indexed");
-                    }
-                }
-				return FileVisitResult.CONTINUE;
-            }
-        });
+    private static String getExtension(File file) {
+        String fileName = file.getName();
+        if(fileName.contains("."))
+        	return fileName.substring(fileName.indexOf("."));
+        return null;
     }
 
-    /**
-     * Indexes a single document
-     */
-    static void indexDoc(IndexWriter writer, Path file, long lastModified, String threadName) throws IOException {
-        try (InputStream stream = Files.newInputStream(file)) {
-            // make a new, empty document
-            Document doc = new Document();
+    private static String readNLines(String file, int ntop, int nbot, String mode) throws IOException {
 
-            Field pathField = new StringField("path", file.toString(), Field.Store.YES);
-            doc.add(pathField);
-            doc.add(new LongPoint("modified", lastModified));
-            doc.add(new TextField("contents",
-                    new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
-            doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
-            doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
-            doc.add(new DoublePoint("sizeKb", (double) (new File(file.toString()).length() / 1024)));
+        BufferedReader br = new BufferedReader(new FileReader(file));
+        List<String> wantedLines = new ArrayList<>();
+        String result = "";
+        
 
-            //faltan los de  lines y bottom lines
+        for (String line; (line = br.readLine()) != null;)
+            wantedLines.add(line);
 
-            if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
-                // New index, so we just add the document (no old document can be there):
-                System.out.println(threadName + ": adding " + file);
-                writer.addDocument(doc);
-            } else {
-                // Existing index (an old copy of this document may have been indexed) so
-                // we use updateDocument instead to replace the old one matching the exact
-                // path, if present:
-                System.out.println(threadName + ": updating " + file);
-                writer.updateDocument(new Term("path", file.toString()), doc);
+        br.close();
+
+        if (mode == "top") {
+            for (int i = 0; i < ntop; i++)
+                if (wantedLines.size() != 0) {
+                    result += wantedLines.get(0) + "\n";
+                    wantedLines.remove(0);
+                }
+            return result;
+
+        } else if (mode == "bot") {
+        	int limit = wantedLines.size()-nbot;
+            for (int i = wantedLines.size()-1; i >= limit; i--)
+                if (wantedLines.size() != 0) {
+                	result += wantedLines.get(wantedLines.size()-1) + "\n";
+                    wantedLines.remove(wantedLines.size()-1);
+                }
+            return result;
+
+        } else {
+            for (int i = 0; i < ntop; i++)
+                if (wantedLines.size() != 0) {
+                    result += wantedLines.get(0) + "\n";
+                    wantedLines.remove(0);
+                }
+            int limit = wantedLines.size()-nbot;
+            for (int i = wantedLines.size()-1; i >= limit; i--)
+                if (wantedLines.size() != 0) {
+                    result += wantedLines.get(wantedLines.size()-1) + "\n";
+                    wantedLines.remove(wantedLines.size()-1);
+                }
+            return result;
+        }
+
+    }
+
+    static void indexDocs(final IndexWriter writer, Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    if (onlyFiles) {
+                        try {
+                            indexDoc(writer, file);
+                        } catch (IOException ignore) {
+                            // don't index files that can't be read.
+                        }
+                    } else {
+                        try {
+                            indexDoc(writer, file);
+                        } catch (IOException ignore) {
+                            // don't index files that can't be read.
+                        }
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } else {
+            indexDoc(writer, path);
+        }
+    }
+
+    static void indexDoc(IndexWriter writer, Path file) throws IOException {
+    	if(fileTypes.isEmpty() || fileTypes.contains(getExtension(file.toFile()))) {
+    		try (InputStream stream = Files.newInputStream(file)) {
+                // make a new, empty document
+                Document doc = new Document();
+
+                Field pathField = new StringField("path", file.toString(), Field.Store.YES);
+                doc.add(pathField);
+
+                if (topLines != 0){
+                    if(bottomLines != 0)
+                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "topbot"))));
+                    else
+                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "top"))));
+                } else {
+                    if(bottomLines != 0)
+                    	doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "bot"))));
+                    else
+                        doc.add(new TextField("contents",
+                                new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+                }
+                doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
+                doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
+                doc.add(new DoublePoint("sizeKb", (double) Files.size(file)));
+                //doc.add(new StoredField("sizeKb", (double) Files.size(file)));
+
+                BasicFileAttributeView basicView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
+                String creationTime = DateTools.dateToString(new Date(basicView.readAttributes().creationTime().toMillis()), DateTools.Resolution.MINUTE);
+                String lastAccessTime = DateTools.dateToString(new Date(basicView.readAttributes().lastAccessTime().toMillis()), DateTools.Resolution.MINUTE);
+                String lastModifiedTime = DateTools.dateToString(new Date(basicView.readAttributes().lastModifiedTime().toMillis()), DateTools.Resolution.MINUTE);
+                doc.add(new StringField("creationTime", creationTime, Field.Store.YES));
+                doc.add(new StringField("lastAccessTime", lastAccessTime, Field.Store.YES));
+                doc.add(new StringField("lastModifiedTime", lastModifiedTime, Field.Store.YES));
+                if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
+                	if(!create)
+                		System.out.println("Warning, update in create mode is not possible");
+                    // New index, so we just add the document (no old document can be there):
+                    System.out.println(Thread.currentThread().getName() + " adding " + file);
+                    writer.addDocument(doc);
+                } else {
+                    // Existing index (an old copy of this document may have been indexed) so
+                    // we use updateDocument instead to replace the old one matching the exact
+                    // path, if present:
+                	if(create) {
+                		System.out.println(Thread.currentThread().getName() + " adding " + file);
+                        writer.addDocument(doc);
+                	}else {
+                		System.out.println(Thread.currentThread().getName() + " updating " + file);
+                		writer.updateDocument(new Term("path", file.toString()), doc);
+                	}
+                	
+                }
             }
+    	}
+    }
+
+    public static void indexNonPartial(IndexWriter writer) {
+        final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+
+        List<Path> docsPathAux = new ArrayList<>(docsPath);
+        ArrayList<Path>[] al = new ArrayList[numThreads];
+        for (int i = 0; i < numThreads; i++) {
+            al[i] = new ArrayList<>();
+        }
+
+        while (!docsPathAux.isEmpty()) {
+            for (int i = 0; i < numThreads; i++) {
+                if (docsPathAux.size() > 0 && docsPathAux.get(0) != null) {
+                    al[i].add(docsPathAux.get(0));
+                    docsPathAux.remove(0);
+                }
+            }
+        }
+
+        for (int i = 0; i < numThreads; i++) {
+            final Runnable worker = new WorkerThread(al[i], writer);
+            executor.execute(worker);
+        }
+
+        executor.shutdown();
+        /* Wait up to 1 hour to finish all the previously submitted jobs */
+        try {
+            executor.awaitTermination(1, TimeUnit.HOURS);
+        } catch (final InterruptedException e) {
+            e.printStackTrace();
+            System.exit(-2);
+        }
+    }
+
+    //Antón esta nota queda para ti si no do acabado esta funcion: Para los partial indexes
+    //lo que voy a hacer es para cada Path en DOCS= le asigno su correspondiente path
+    //descrito en partialIndex, y si no hay para hacer un par, crearé una carpeta tmp en
+    //el path que sobre de DOCS, y si sobran en partialIndex los ignoro y punto
+    static void indexPartial(IndexWriter writer) {
+        try {
+            final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+
+            List<Path> docsPathAux = new ArrayList<>(docsPath);
+            List<FSDirectory> partialIndAux = new ArrayList<>();
+
+            for (Path pi : partialIndexes) {
+                partialIndAux.add(FSDirectory.open(pi));
+            }
+
+            if (docsPathAux.size() > partialIndAux.size()) {
+                int auxI = docsPathAux.size() - 1;
+                while (docsPathAux.size() > partialIndAux.size()) {
+                    Path auxIndPath = Paths.get(docsPathAux.get(auxI) + "/tmp");
+                    partialIndAux.add(FSDirectory.open(auxIndPath));
+                    auxI++;
+                }
+            }
+
+            while (partialIndAux.size() > docsPathAux.size()) {
+                partialIndAux.remove(partialIndAux.size() - 1);
+            }
+
+            ArrayList<Path>[] arrayPaths = new ArrayList[numThreads];
+            ArrayList<FSDirectory>[] arrayIndex = new ArrayList[numThreads];
+
+            for (int i = 0; i < numThreads; i++) {
+                arrayPaths[i] = new ArrayList<>();
+                arrayIndex[i] = new ArrayList<>();
+            }
+
+            while (!docsPathAux.isEmpty()) {
+                for (int i = 0; i < numThreads; i++) {
+                    if (docsPathAux.size() > 0 && docsPathAux.get(0) != null) {
+                        arrayPaths[i].add(docsPathAux.get(0));
+                        docsPathAux.remove(0);
+                    }
+                }
+            }
+
+            while (!partialIndAux.isEmpty()) {
+                for (int i = 0; i < numThreads; i++) {
+                    if (partialIndAux.size() > 0 && partialIndAux.get(0) != null) {
+                        arrayIndex[i].add(partialIndAux.get(0));
+                        partialIndAux.remove(0);
+                    }
+                }
+            }
+
+            for (int i = 0; i < numThreads; i++) {
+                final Runnable worker = new WorkerThread(arrayPaths[i], arrayIndex[i]);
+                executor.execute(worker);
+            }
+
+            executor.shutdown();
+            /* Wait up to 1 hour to finish all the previously submitted jobs */
+            try {
+                executor.awaitTermination(1, TimeUnit.HOURS);
+            } catch (final InterruptedException e) {
+                e.printStackTrace();
+                System.exit(-2);
+            } finally {
+                System.out.println("Merging indexes into " + indexPath);
+                try {
+                    for (FSDirectory partInd : partialIndAux) {
+                        writer.addIndexes(partInd);
+                    }
+                } catch (IOException e) {
+                    System.out.println("Error while merging: " + e);
+                }
+            }
+
+        } catch (IOException e) {
+            System.out.println("Caught a " + e.getClass() + " with message: " + e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+
+        parseArguments(args);
+        readConfigFile(DEFAULT_PATH);
+
+        for (Path path : docsPath) {
+            if (!Files.isReadable(path)) {
+                System.out.println("Document directory '" + path.toAbsolutePath()
+                        + "' does not exist or is not readable, please check the path");
+                System.exit(1);
+            }
+        }
+
+        Date start = new Date();
+        try {
+            System.out.println("Indexing to directory '" + indexPath + "'...");
+
+            Directory dir = FSDirectory.open(Paths.get(indexPath));
+            Analyzer analyzer = new StandardAnalyzer();
+            IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+            
+            iwc.setOpenMode(openmode);
+
+            /*if (create) {
+                // Create a new index in the directory, removing any
+                // previously indexed documents:
+                iwc.setOpenMode(OpenMode.CREATE);
+            } else {
+                // Add new documents to an existing index:
+                iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
+            }*/
+
+            // Optional: for better indexing performance, if you
+            // are indexing many documents, increase the RAM
+            // buffer. But if you do this, increase the max heap
+            // size to the JVM (eg add -Xmx512m or -Xmx1g):
+            //
+            // iwc.setRAMBufferSizeMB(256.0);
+
+            IndexWriter writer = new IndexWriter(dir, iwc);
+
+            if (partialIndex)
+                indexPartial(writer);
+            else
+                indexNonPartial(writer);
+
+            try {
+                writer.commit();
+                writer.close();
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+            Date end = new Date();
+            System.out.println(end.getTime() - start.getTime() + " total milliseconds");
+
+        } catch (IOException e) {
+            System.out.println(" caught a " + e.getClass() + " with message: " + e.getMessage());
         }
     }
 }
-
-
