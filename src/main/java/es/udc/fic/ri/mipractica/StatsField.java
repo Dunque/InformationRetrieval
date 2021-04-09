@@ -2,6 +2,8 @@ package es.udc.fic.ri.mipractica;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -42,30 +44,51 @@ public class StatsField {
         }
     }
     
-    static void printStatistics(IndexReader reader, String field) throws IOException{
-    	CollectionStatistics collectionStats = new CollectionStatistics(
-	            field,
-	            reader.maxDoc(),
-	            reader.getDocCount(field),
-	            reader.getSumTotalTermFreq(field),
-	            reader.getSumDocFreq(field)
-	            );
-		System.out.println(collectionStats.toString());
+    static String gatherStatistics(IndexReader reader, String field) throws IOException{
+    	if(reader.getDocCount(field)>0) {
+    		CollectionStatistics collectionStats = new CollectionStatistics(
+    	            field,
+    	            reader.maxDoc(),
+    	            reader.getDocCount(field),
+    	            reader.getSumTotalTermFreq(field),
+    	            reader.getSumDocFreq(field)
+    	            );
+    		return collectionStats.toString();
+    	}
+    	return null;
+    }
+    
+    static void printStatistics(IndexReader reader, Set<String> st) throws IOException{
+    	for(String statistic : st) {
+    		System.out.println(statistic);
+    	}
     }
 
     public static void main(String[] args) {
 
         parseArguments(args);
         IndexReader reader=null;
+        Set<String> st = new HashSet<String>();
         
         try {
 			reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
 			if(field==null) {
-				for(IndexableField ifield : reader.document(0).getFields()) 
-					printStatistics(reader,ifield.name());
+				for(int i = 0; i<reader.maxDoc();i++)
+					for(IndexableField ifield : reader.document(i).getFields()) {
+						String statistic=gatherStatistics(reader,ifield.name());
+						if(statistic!=null)
+							st.add(statistic);
+						//printStatistics(reader,ifield.name());
+					}
+						
 			}else {
-				printStatistics(reader,field);
+				String statistic=gatherStatistics(reader,field);
+				if(statistic!=null)
+					st.add(statistic);
+				//printStatistics(reader,field);
 			}
+			if(!st.isEmpty())
+				printStatistics(reader,st);
 			reader.close();
 			
         } catch (IOException e) {

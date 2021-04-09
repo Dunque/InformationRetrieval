@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" name="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.107" tests="1" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" name="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.119" tests="1" errors="0" skipped="0" failures="0">
   <properties>
     <property name="awt.toolkit" value="sun.awt.X11.XToolkit"/>
     <property name="java.specification.version" value="11"/>
@@ -15,7 +15,7 @@
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
     <property name="user.country" value="US"/>
     <property name="sun.boot.library.path" value="/usr/lib/jvm/java-11-openjdk-amd64/lib"/>
-    <property name="sun.java.command" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire/surefirebooter10660165436879606853.jar /home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire 2021-04-09T12-34-40_765-jvmRun1 surefire4903321963566680971tmp surefire_08118701349617102743tmp"/>
+    <property name="sun.java.command" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire/surefirebooter285660420084599393.jar /home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire 2021-04-09T13-42-27_619-jvmRun1 surefire10462622253194141926tmp surefire_09124424776057651140tmp"/>
     <property name="jdk.debug" value="release"/>
     <property name="surefire.test.class.path" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/test-classes:/home/anton/Desktop/RI/p1/InformationRetrieval/target/classes:/home/anton/.m2/repository/org/apache/lucene/lucene-core/8.1.1/lucene-core-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-queryparser/8.1.1/lucene-queryparser-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-queries/8.1.1/lucene-queries-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-sandbox/8.1.1/lucene-sandbox-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-analyzers-common/8.1.1/lucene-analyzers-common-8.1.1.jar:/home/anton/.m2/repository/junit/junit/4.11/junit-4.11.jar:/home/anton/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:"/>
     <property name="sun.cpu.endian" value="little"/>
@@ -31,7 +31,7 @@
     <property name="java.specification.name" value="Java Platform API Specification"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
     <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment"/>
-    <property name="surefire.real.class.path" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire/surefirebooter10660165436879606853.jar"/>
+    <property name="surefire.real.class.path" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire/surefirebooter285660420084599393.jar"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
     <property name="java.runtime.version" value="11.0.10+9-Ubuntu-0ubuntu1.18.04"/>
     <property name="user.name" value="anton"/>
@@ -56,5 +56,5 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="55.0"/>
   </properties>
-  <testcase name="shouldAnswerWithTrue" classname="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.006"/>
+  <testcase name="shouldAnswerWithTrue" classname="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.007"/>
 </testsuite>
