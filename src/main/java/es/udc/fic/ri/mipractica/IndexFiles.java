@@ -284,13 +284,13 @@ public class IndexFiles {
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     if (onlyFiles) {
                         try {
-                            indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
+                            indexDoc(writer, file);
                         } catch (IOException ignore) {
                             // don't index files that can't be read.
                         }
                     } else {
                         try {
-                            indexDoc(writer, file, attrs.lastModifiedTime().toMillis());
+                            indexDoc(writer, file);
                         } catch (IOException ignore) {
                             // don't index files that can't be read.
                         }
@@ -299,11 +299,11 @@ public class IndexFiles {
                 }
             });
         } else {
-            indexDoc(writer, path, Files.getLastModifiedTime(path).toMillis());
+            indexDoc(writer, path);
         }
     }
 
-    static void indexDoc(IndexWriter writer, Path file, long lastModified) throws IOException {
+    static void indexDoc(IndexWriter writer, Path file) throws IOException {
     	if(fileTypes.isEmpty() || fileTypes.contains(getExtension(file.toFile()))) {
     		try (InputStream stream = Files.newInputStream(file)) {
                 // make a new, empty document
@@ -311,7 +311,6 @@ public class IndexFiles {
 
                 Field pathField = new StringField("path", file.toString(), Field.Store.YES);
                 doc.add(pathField);
-                doc.add(new LongPoint("modified", lastModified));
 
                 if (topLines != 0){
                     if(bottomLines != 0)
@@ -328,7 +327,8 @@ public class IndexFiles {
 
                 doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
                 doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
-                doc.add(new StoredField("sizeKb", (double) Files.size(file)));
+                doc.add(new DoublePoint("sizeKb", (double) Files.size(file)));
+                //doc.add(new StoredField("sizeKb", (double) Files.size(file)));
 
                 BasicFileAttributeView basicView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
                 String creationTime = DateTools.dateToString(new Date(basicView.readAttributes().creationTime().toMillis()), DateTools.Resolution.MINUTE);

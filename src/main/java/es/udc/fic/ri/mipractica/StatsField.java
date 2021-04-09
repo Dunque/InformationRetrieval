@@ -1,5 +1,13 @@
 package es.udc.fic.ri.mipractica;
 
+import java.io.IOException;
+import java.nio.file.Paths;
+
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.store.FSDirectory;
+
 public class StatsField {
 
     static String indexPath;
@@ -29,5 +37,20 @@ public class StatsField {
     public static void main(String[] args) {
 
         parseArguments(args);
+        
+        try {
+			IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
+			CollectionStatistics collectionStats = new CollectionStatistics(
+		            field.toString(),
+		            reader.maxDoc(),
+		            reader.getDocCount(field),
+		            reader.getSumTotalTermFreq(field),
+		            reader.getSumDocFreq(field)
+		            );
+			System.out.println(collectionStats.sumTotalTermFreq());
+        } catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 }
