@@ -236,6 +236,7 @@ public class IndexFiles {
         BufferedReader br = new BufferedReader(new FileReader(file));
         List<String> wantedLines = new ArrayList<>();
         String result = "";
+        
 
         for (String line; (line = br.readLine()) != null;)
             wantedLines.add(line);
@@ -251,9 +252,10 @@ public class IndexFiles {
             return result;
 
         } else if (mode == "bot") {
-            for (int i = wantedLines.size()-1; i >= wantedLines.size()-nbot; i--)
+        	int limit = wantedLines.size()-nbot;
+            for (int i = wantedLines.size()-1; i >= limit; i--)
                 if (wantedLines.size() != 0) {
-                    result += wantedLines.get(wantedLines.size()-1) + "\n";
+                	result += wantedLines.get(wantedLines.size()-1) + "\n";
                     wantedLines.remove(wantedLines.size()-1);
                 }
             return result;
@@ -264,7 +266,8 @@ public class IndexFiles {
                     result += wantedLines.get(0) + "\n";
                     wantedLines.remove(0);
                 }
-            for (int i = wantedLines.size()-1; i >= wantedLines.size()-nbot; i--)
+            int limit = wantedLines.size()-nbot;
+            for (int i = wantedLines.size()-1; i >= limit; i--)
                 if (wantedLines.size() != 0) {
                     result += wantedLines.get(wantedLines.size()-1) + "\n";
                     wantedLines.remove(wantedLines.size()-1);
@@ -317,7 +320,7 @@ public class IndexFiles {
                         doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "top"))));
                 } else {
                     if(bottomLines != 0)
-                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "bot"))));
+                    	doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "bot"))));
                     else
                         doc.add(new TextField("contents",
                                 new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
