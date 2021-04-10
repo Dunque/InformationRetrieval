@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.*;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -303,7 +304,18 @@ public class IndexFiles {
         }
     }
 
+    static {
+        FieldType TYPE_STORED = new FieldType();
+        TYPE_STORED.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+        TYPE_STORED.setTokenized(true);
+        TYPE_STORED.setStored(true);
+        TYPE_STORED.setStoreTermVectors(true);
+        TYPE_STORED.setStoreTermVectorPositions(true);
+        TYPE_STORED.freeze();
+    }
+
     static void indexDoc(IndexWriter writer, Path file) throws IOException {
+
     	if(fileTypes.isEmpty() || fileTypes.contains(getExtension(file.toFile()))) {
     		try (InputStream stream = Files.newInputStream(file)) {
                 // make a new, empty document
