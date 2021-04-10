@@ -23,41 +23,9 @@ public class SimilarTerms {
 
     public static class CosineDocumentSimilarity {
 
-        public static final String CONTENT = "Content";
         private final Set<String> terms = new HashSet<>();
-        private final RealVector v1;
-        private final RealVector v2;
 
-        CosineDocumentSimilarity(String s1, String s2, String spath) throws IOException {
-            Directory directory = createIndex(s1, s2, spath);
-            IndexReader reader = DirectoryReader.open(directory);
-            Map<String, Integer> f1 = getTermFrequencies(reader, 0);
-            Map<String, Integer> f2 = getTermFrequencies(reader, 1);
-            reader.close();
-            v1 = toRealVector(f1);
-            v2 = toRealVector(f2);
-        }
-
-        Directory createIndex(String s1, String s2, String spath) throws IOException {
-
-            MMapDirectory directory = new MMapDirectory(Paths.get(spath));
-
-            /*
-             * File-based Directory implementation that uses mmap for reading, and
-             * FSDirectory.FSIndexOutput for writing.
-             *
-             * RAMDirectory uses inefficient synchronization and is discouraged in lucene
-             * 8.x in favor of MMapDirectory and it will be removed in future versions of
-             * Lucene.
-             */
-
-            Analyzer analyzer = new SimpleAnalyzer();
-            IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
-            IndexWriter writer = new IndexWriter(directory, iwc);
-            addDocument(writer, s1);
-            addDocument(writer, s2);
-            writer.close();
-            return directory;
+        CosineDocumentSimilarity(){
         }
 
         /* Indexed, tokenized, stored. */
@@ -74,23 +42,11 @@ public class SimilarTerms {
             TYPE_STORED.freeze();
         }
 
-        void addDocument(IndexWriter writer, String content) throws IOException {
-            Document doc = new Document();
-            Field field = new Field(CONTENT, content, TYPE_STORED);
-            doc.add(field);
-            writer.addDocument(doc);
-        }
-
-        double getCosineSimilarity() {
+        double getCosineSimilarity(RealVector v1, RealVector v2) {
             return (v1.dotProduct(v2)) / (v1.getNorm() * v2.getNorm());
         }
 
-        public double getCosineSimilarity(String s1, String s2, String spath) throws IOException {
-            return new CosineDocumentSimilarity(s1, s2, spath).getCosineSimilarity();
-        }
-
-        Map<String, Integer> getTermFrequencies(IndexReader reader, int docId) throws IOException {
-            Terms vector = reader.getTermVector(docId, CONTENT);
+        Map<String, Integer> getTermFrequencies(IndexReader reader, int docId, String field) throws IOException {
             // IndexReader.getTermVector(int docID, String field):
             // Retrieve term vector for this document and field, or null if term
             // vectors were not indexed.
@@ -103,8 +59,18 @@ public class SimilarTerms {
             // termino en docID,
             // es decir, el tf del termino en el documento docID
 
-            TermsEnum termsEnum = null;
-            termsEnum = vector.iterator();
+            Terms termVector;
+
+            if ((termVector = reader.getTermVector(docId, field)) == null) {
+                System.out.println("Document has no term vector");
+                return null;
+            }
+
+            System.out.println(termVector);
+
+            TermsEnum termsEnum = termVector.iterator();
+
+            termsEnum = termVector.iterator();
             Map<String, Integer> frequencies = new HashMap<>();
             BytesRef text = null;
             while ((text = termsEnum.next()) != null) {
@@ -123,7 +89,7 @@ public class SimilarTerms {
                 int value = map.containsKey(term) ? map.get(term) : 0;
                 vector.setEntry(i++, value);
             }
-            return (RealVector) vector.mapDivide(vector.getL1Norm());
+            return vector.mapDivide(vector.getL1Norm());
         }
     }
 
@@ -182,30 +148,6 @@ public class SimilarTerms {
         }
     }
 
-    static class TFXIDFComparator implements Comparator<TermValues> {
-
-        public int compare(TermValues a, TermValues b) {
-            if (a.tfxidf > b.tfxidf)
-                return -1;
-            else if (b.tfxidf > a.tfxidf)
-                return 1;
-            else
-                return 0;
-        }
-    }
-
-    static class TFComparator implements Comparator<TermValues> {
-
-        public int compare(TermValues a, TermValues b) {
-            if (a.tf > b.tf)
-                return -1;
-            else if (b.tf > a.tf)
-                return 1;
-            else
-                return 0;
-        }
-    }
-
     public static ArrayList<TermValues> calculateTfidf(IndexReader reader, String field, int docID) throws IOException {
 
         Terms termVector;
@@ -248,28 +190,25 @@ public class SimilarTerms {
             reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
         } catch (IOException e) {
             e.printStackTrace();
+            System.exit(-1);
         }
 
-        PostingsEnum termPosting ;
+        CosineDocumentSimilarity cds = new CosineDocumentSimilarity();
 
-        if ((termPosting = MultiTerms.getTermPostingsEnum(reader, field, new BytesRef(term))) != null) {
+        List<Terms> nonNullTerms = new ArrayList<>();
 
-            int docId;
+        for (int i = 0; i < nonNullTerms.size()-1; i++) {
 
-            while ((docId = termPosting.nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
+            Map<String, Integer> tm1 = cds.getTermFrequencies(reader, i, field);
+            Map<String, Integer> tm2 = cds.getTermFrequencies(reader, i+1, field);
 
-                ArrayList<TermValues> termValuesArray = calculateTfidf(reader, field, docId);
+            RealVector v1 = cds.toRealVector(tm1);
+            RealVector v2 = cds.toRealVector(tm2);
 
-                if (rep == "tfxidf")
-                    Collections.sort(termValuesArray, new TFXIDFComparator());
-                else if (rep == "tf")
-                    Collections.sort(termValuesArray, new TFComparator());
-                else if (rep == "bin")
-                    Collections.sort(termValuesArray, new TFComparator());
+            double sim = cds.getCosineSimilarity(v1, v2);
 
-                for (int i = 0; i < top; i++)
-                    System.out.println(termValuesArray.get(i).term);
-            }
+            System.out.println("Similarity between vectors " + i + " and " + i+1 + " : " + sim);
+
         }
 
         try {
