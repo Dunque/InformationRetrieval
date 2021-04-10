@@ -9,7 +9,9 @@ import org.apache.lucene.store.FSDirectory;
 
 import java.io.*;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class WriteIndex {
 
@@ -49,6 +51,8 @@ public class WriteIndex {
 
         List<IndexableField> fields = null;
 
+        List<String> fieldSet = new ArrayList<>();
+
         try {
             dir = FSDirectory.open(Paths.get(indexPath));
             indexReader = DirectoryReader.open(dir);
@@ -56,6 +60,8 @@ public class WriteIndex {
             System.out.println("Couldn't read path: " + indexPath);
             e.printStackTrace();
         }
+
+        bw.write("- Fields avaliable in Index: " + indexPath + "\n\n");
 
         for (int i = 0; i < indexReader.numDocs(); i++) {
 
@@ -69,15 +75,16 @@ public class WriteIndex {
                 e1.printStackTrace();
             }
 
-            System.out.println("Documento " + i);
-
             fields = doc.getFields();
-            // Note doc.getFields() gets the stored fields
-            bw.write("Fields found\n");
-            for (IndexableField field : fields) {
-                String fieldName = field.name();
-                bw.write(fieldName + "\n");
 
+            for (IndexableField field : fields) {
+
+                String fieldName = field.name();
+
+                if (!fieldSet.contains(fieldName)) {
+                    fieldSet.add(fieldName);
+                    bw.write(fieldName + "\n");
+                }
             }
 
         }

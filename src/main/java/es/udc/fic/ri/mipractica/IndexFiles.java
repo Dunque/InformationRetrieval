@@ -345,7 +345,7 @@ public class IndexFiles {
                 doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
                 doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
                 doc.add(new DoublePoint("sizeKb", (double) Files.size(file)));
-                //doc.add(new StoredField("sizeKb", (double) Files.size(file)));
+                //doc.add(new StoredField("sizeKb", (double) Files.size(file), ));
 
                 BasicFileAttributeView basicView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
 
