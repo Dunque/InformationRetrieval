@@ -192,8 +192,8 @@ public class IndexFiles {
                 partialIndexes.add(partIndex);
             }
         } else {
-            //System.out.println("Error in the config file, there are no partial index paths");
-            //System.exit(-1);
+            if (partialIndex)
+                System.out.println("No partial index paths specified, creating new ones");
         }
 
         //Reading the allowed file types
@@ -282,19 +282,11 @@ public class IndexFiles {
         if (Files.isDirectory(path)) {
             Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
                 @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    if (onlyFiles) {
-                        try {
-                            indexDoc(writer, file);
-                        } catch (IOException ignore) {
-                            // don't index files that can't be read.
-                        }
-                    } else {
-                        try {
-                            indexDoc(writer, file);
-                        } catch (IOException ignore) {
-                            // don't index files that can't be read.
-                        }
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    try {
+                        indexDoc(writer, file);
+                    } catch (IOException ignore) {
+                        // don't index files that can't be read.
                     }
                     return FileVisitResult.CONTINUE;
                 }
@@ -318,7 +310,7 @@ public class IndexFiles {
 
     	if(fileTypes.isEmpty() || fileTypes.contains(getExtension(file.toFile()))) {
     		try (InputStream stream = Files.newInputStream(file)) {
-                // make a new, empty document
+
                 Document doc = new Document();
 
                 Field pathField = new StringField("path", file.toString(), Field.Store.YES);
@@ -404,10 +396,6 @@ public class IndexFiles {
         }
     }
 
-    //Antón esta nota queda para ti si no do acabado esta funcion: Para los partial indexes
-    //lo que voy a hacer es para cada Path en DOCS= le asigno su correspondiente path
-    //descrito en partialIndex, y si no hay para hacer un par, crearé una carpeta tmp en
-    //el path que sobre de DOCS, y si sobran en partialIndex los ignoro y punto
     static void indexPartial(IndexWriter writer) {
         try {
             final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
@@ -509,22 +497,6 @@ public class IndexFiles {
             
             iwc.setOpenMode(openmode);
 
-            /*if (create) {
-                // Create a new index in the directory, removing any
-                // previously indexed documents:
-                iwc.setOpenMode(OpenMode.CREATE);
-            } else {
-                // Add new documents to an existing index:
-                iwc.setOpenMode(OpenMode.CREATE_OR_APPEND);
-            }*/
-
-            // Optional: for better indexing performance, if you
-            // are indexing many documents, increase the RAM
-            // buffer. But if you do this, increase the max heap
-            // size to the JVM (eg add -Xmx512m or -Xmx1g):
-            //
-            // iwc.setRAMBufferSizeMB(256.0);
-
             IndexWriter writer = new IndexWriter(dir, iwc);
 
             if (partialIndex)
@@ -536,7 +508,6 @@ public class IndexFiles {
                 writer.commit();
                 writer.close();
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
 
