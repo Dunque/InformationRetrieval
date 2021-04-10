@@ -100,16 +100,16 @@ public class IndexFiles {
 
     }
 
-    static final String DEFAULT_PATH = "../src/main/resources/config.properties";
+    static final String DEFAULT_PATH = "config.properties";
 
     static String indexPath = "index"; //default index path is a folder named index located in the root dir
     static boolean create = true; //Create true == Update false
     static boolean onlyFiles = false;
-    static List<String> fileTypes = new ArrayList<String>();
-    static List<Path> docsPath = new ArrayList<Path>();
+    static List<String> fileTypes = new ArrayList<>();
+    static List<Path> docsPath = new ArrayList<>();
     static OpenMode openmode = OpenMode.CREATE_OR_APPEND;
     static boolean partialIndex = false;
-    static List<Path> partialIndexes = new ArrayList<Path>();
+    static List<Path> partialIndexes = new ArrayList<>();
     static int numThreads = Runtime.getRuntime().availableProcessors();
 
     static int topLines = 0;
@@ -124,9 +124,7 @@ public class IndexFiles {
         String usage = "java -jar IndexFiles-0.0.1-SNAPSHOT-jar-with-dependencies"
                 + " [-index INDEX_PATH] [-update] [-onlyFiles]"
                 + " [-openmode <APPEND | CREATE | APPEND_OR_CREATE>]"
-                + " [-partialIndexes] [-numThreads NUM_THREADS]\n"
-                + "This indexes the documents in DOCS_PATH, creating a Lucene index"
-                + " in INDEX_PATH that can be searched with SearchFiles";
+                + " [-partialIndexes] [-numThreads NUM_THREADS]\n";
 
         if (args.length < 1)
             System.out.println(usage);
@@ -227,9 +225,22 @@ public class IndexFiles {
 
     private static String getExtension(File file) {
         String fileName = file.getName();
-        if(fileName.contains("."))
-        	return fileName.substring(fileName.indexOf("."));
+        if (fileName.contains("."))
+            return fileName.substring(fileName.indexOf("."));
         return null;
+    }
+
+    private static String readFile(String file) throws IOException {
+
+        String result = "";
+        BufferedReader br = new BufferedReader(
+                new InputStreamReader(new FileInputStream(file)));
+        for (String line; (line = br.readLine()) != null; )
+            result += line + "\n";
+
+        br.close();
+
+        return result;
     }
 
     private static String readNLines(String file, int ntop, int nbot, String mode) throws IOException {
@@ -237,9 +248,9 @@ public class IndexFiles {
         BufferedReader br = new BufferedReader(new FileReader(file));
         List<String> wantedLines = new ArrayList<>();
         String result = "";
-        
 
-        for (String line; (line = br.readLine()) != null;)
+
+        for (String line; (line = br.readLine()) != null; )
             wantedLines.add(line);
 
         br.close();
@@ -253,11 +264,11 @@ public class IndexFiles {
             return result;
 
         } else if (mode == "bot") {
-        	int limit = wantedLines.size()-nbot;
-            for (int i = wantedLines.size()-1; i >= limit; i--)
+            int limit = wantedLines.size() - nbot;
+            for (int i = wantedLines.size() - 1; i >= limit; i--)
                 if (wantedLines.size() != 0) {
-                	result += wantedLines.get(wantedLines.size()-1) + "\n";
-                    wantedLines.remove(wantedLines.size()-1);
+                    result += wantedLines.get(wantedLines.size() - 1) + "\n";
+                    wantedLines.remove(wantedLines.size() - 1);
                 }
             return result;
 
@@ -267,11 +278,11 @@ public class IndexFiles {
                     result += wantedLines.get(0) + "\n";
                     wantedLines.remove(0);
                 }
-            int limit = wantedLines.size()-nbot;
-            for (int i = wantedLines.size()-1; i >= limit; i--)
+            int limit = wantedLines.size() - nbot;
+            for (int i = wantedLines.size() - 1; i >= limit; i--)
                 if (wantedLines.size() != 0) {
-                    result += wantedLines.get(wantedLines.size()-1) + "\n";
-                    wantedLines.remove(wantedLines.size()-1);
+                    result += wantedLines.get(wantedLines.size() - 1) + "\n";
+                    wantedLines.remove(wantedLines.size() - 1);
                 }
             return result;
         }
@@ -296,9 +307,12 @@ public class IndexFiles {
         }
     }
 
+    public static final FieldType TYPE_STORED = new FieldType();
+
+    static final IndexOptions options = IndexOptions.DOCS_AND_FREQS_AND_POSITIONS;
+
     static {
-        FieldType TYPE_STORED = new FieldType();
-        TYPE_STORED.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
+        TYPE_STORED.setIndexOptions(options);
         TYPE_STORED.setTokenized(true);
         TYPE_STORED.setStored(true);
         TYPE_STORED.setStoreTermVectors(true);
@@ -308,41 +322,50 @@ public class IndexFiles {
 
     static void indexDoc(IndexWriter writer, Path file) throws IOException {
 
-    	if(fileTypes.isEmpty() || fileTypes.contains(getExtension(file.toFile()))) {
-    		try (InputStream stream = Files.newInputStream(file)) {
+        if (fileTypes.isEmpty() || fileTypes.contains(getExtension(file.toFile()))) {
+            try (InputStream stream = Files.newInputStream(file)) {
 
                 Document doc = new Document();
 
                 Field pathField = new StringField("path", file.toString(), Field.Store.YES);
                 doc.add(pathField);
 
-                if (topLines != 0){
-                    if(bottomLines != 0)
-                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "topbot"))));
+                if (topLines != 0) {
+                    if (bottomLines != 0)
+                        doc.add(new Field("contents", readNLines(file.toString(), topLines, bottomLines, "topbot"), TYPE_STORED));
                     else
-                        doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "top"))));
+                        doc.add(new Field("contents", readNLines(file.toString(), topLines, bottomLines, "top"), TYPE_STORED));
                 } else {
-                    if(bottomLines != 0)
-                    	doc.add(new TextField("contents", new StringReader(readNLines(file.toString(), topLines, bottomLines, "bot"))));
+                    if (bottomLines != 0)
+                        doc.add(new Field("contents", readNLines(file.toString(), topLines, bottomLines, "bot"), TYPE_STORED));
                     else
-                        doc.add(new TextField("contents",
-                                new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))));
+                        doc.add(new Field("contents", readFile(file.toString()), TYPE_STORED));
                 }
+
                 doc.add(new StringField("hostname", InetAddress.getLocalHost().getHostName(), Field.Store.YES));
                 doc.add(new StringField("thread", Thread.currentThread().getName(), Field.Store.YES));
                 doc.add(new DoublePoint("sizeKb", (double) Files.size(file)));
                 //doc.add(new StoredField("sizeKb", (double) Files.size(file)));
 
                 BasicFileAttributeView basicView = Files.getFileAttributeView(file, BasicFileAttributeView.class);
-                String creationTime = DateTools.dateToString(new Date(basicView.readAttributes().creationTime().toMillis()), DateTools.Resolution.MINUTE);
-                String lastAccessTime = DateTools.dateToString(new Date(basicView.readAttributes().lastAccessTime().toMillis()), DateTools.Resolution.MINUTE);
-                String lastModifiedTime = DateTools.dateToString(new Date(basicView.readAttributes().lastModifiedTime().toMillis()), DateTools.Resolution.MINUTE);
+
+                String creationTime = basicView.readAttributes().creationTime().toString();
+                String lastAccessTime = basicView.readAttributes().lastAccessTime().toString();
+                String lastModifiedTime = basicView.readAttributes().lastModifiedTime().toString();
                 doc.add(new StringField("creationTime", creationTime, Field.Store.YES));
                 doc.add(new StringField("lastAccessTime", lastAccessTime, Field.Store.YES));
                 doc.add(new StringField("lastModifiedTime", lastModifiedTime, Field.Store.YES));
+
+                String creationTimeLucene = DateTools.dateToString(new Date(basicView.readAttributes().creationTime().toMillis()), DateTools.Resolution.MINUTE);
+                String lastAccessTimeLucene = DateTools.dateToString(new Date(basicView.readAttributes().lastAccessTime().toMillis()), DateTools.Resolution.MINUTE);
+                String lastModifiedTimeLucene = DateTools.dateToString(new Date(basicView.readAttributes().lastModifiedTime().toMillis()), DateTools.Resolution.MINUTE);
+                doc.add(new StringField("creationTimeLucene", creationTimeLucene, Field.Store.YES));
+                doc.add(new StringField("lastAccessTimeLucene", lastAccessTimeLucene, Field.Store.YES));
+                doc.add(new StringField("lastModifiedTimeLucene", lastModifiedTimeLucene, Field.Store.YES));
+
                 if (writer.getConfig().getOpenMode() == OpenMode.CREATE) {
-                	if(!create)
-                		System.out.println("Warning, update in create mode is not possible");
+                    if (!create)
+                        System.out.println("Warning, update in create mode is not possible");
                     // New index, so we just add the document (no old document can be there):
                     System.out.println(Thread.currentThread().getName() + " adding " + file);
                     writer.addDocument(doc);
@@ -350,17 +373,17 @@ public class IndexFiles {
                     // Existing index (an old copy of this document may have been indexed) so
                     // we use updateDocument instead to replace the old one matching the exact
                     // path, if present:
-                	if(create) {
-                		System.out.println(Thread.currentThread().getName() + " adding " + file);
+                    if (create) {
+                        System.out.println(Thread.currentThread().getName() + " adding " + file);
                         writer.addDocument(doc);
-                	}else {
-                		System.out.println(Thread.currentThread().getName() + " updating " + file);
-                		writer.updateDocument(new Term("path", file.toString()), doc);
-                	}
-                	
+                    } else {
+                        System.out.println(Thread.currentThread().getName() + " updating " + file);
+                        writer.updateDocument(new Term("path", file.toString()), doc);
+                    }
+
                 }
             }
-    	}
+        }
     }
 
     public static void indexNonPartial(IndexWriter writer) {
@@ -494,7 +517,7 @@ public class IndexFiles {
             Directory dir = FSDirectory.open(Paths.get(indexPath));
             Analyzer analyzer = new StandardAnalyzer();
             IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
-            
+
             iwc.setOpenMode(openmode);
 
             IndexWriter writer = new IndexWriter(dir, iwc);

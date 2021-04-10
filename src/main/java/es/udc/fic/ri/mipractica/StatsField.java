@@ -15,7 +15,7 @@ import org.apache.lucene.store.FSDirectory;
 
 public class StatsField {
 
-    static String indexPath;
+    static String indexPath = "index";
     static String field;
 
     private static void parseArguments(String[] args) {

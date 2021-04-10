@@ -135,7 +135,7 @@ public class BestTerms {
             while (docs.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
 
                 double tf = classicSimilarity.tf(docs.freq());
-                termValuesArray.add(new TermValues(term.text(), tf, idf));
+                //termValuesArray.add(new TermValues(term.text(), tf, idf));
             }
         }
         return termValuesArray;
@@ -176,16 +176,16 @@ public class BestTerms {
         }
 
 
-        ArrayList<TermValues> termValuesArray = calculateTfidf(reader, field, docId);
-
-        if (rep == "tfxidf")
-            Collections.sort(termValuesArray, new TFXIDFComparator());
-        else if (rep == "tf")
-            Collections.sort(termValuesArray, new TFComparator());
-        else if (rep == "bin")
-            Collections.sort(termValuesArray, new TFComparator());
-
-        for (int i = 0; i < top; i++)
-            System.out.println(termValuesArray.get(i).term);
+//        ArrayList<TermValues> termValuesArray = calculateTfidf(reader, field, docId);
+//
+//        if (rep == "tfxidf")
+//            Collections.sort(termValuesArray, new TFXIDFComparator());
+//        else if (rep == "tf")
+//            Collections.sort(termValuesArray, new TFComparator());
+//        else if (rep == "bin")
+//            Collections.sort(termValuesArray, new TFComparator());
+//
+//        for (int i = 0; i < top; i++)
+//            System.out.println(termValuesArray.get(i).term);
     }
 }

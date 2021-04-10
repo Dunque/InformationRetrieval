@@ -216,7 +216,7 @@ public class SimilarTerms {
         }
 
         TermsEnum iterator = termVector.iterator();
-        TFIDFSimilarity cosineSimilarity = new CosineDocumentSimilarity();
+        TFIDFSimilarity cosineSimilarity = new ClassicSimilarity();
         BytesRef tempTerm;
         int docsCount = reader.numDocs();
         PostingsEnum docs = null;
