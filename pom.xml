@@ -80,10 +80,6 @@
 			<version>3.7.1</version>
 		</plugin>
 		<plugin>
-			<artifactId>maven-project-info-reports-plugin</artifactId>
-			<version>3.0.0</version>
-		</plugin>
-		<plugin>
 			<groupId>org.apache.maven.plugins</groupId>
 			<artifactId>maven-jar-plugin</artifactId>
 			<version>3.1.1</version>
@@ -91,7 +87,7 @@
 				<archive>
 					<manifest>
 						<addClasspath>true</addClasspath>
-						<mainClass>es.udc.fic.ri.mipractica.App</mainClass>
+						<mainClass>es.udc.fi.ri.mipractica.App</mainClass>
 					</manifest>
 				</archive>
 			</configuration>
@@ -113,7 +109,7 @@
 						</descriptorRefs>
 						<archive>
 							<manifest>
-								<mainClass>es.udc.fic.ri.mipractica.StatsField</mainClass>
+								<mainClass>es.udc.fi.ri.mipractica.StatsField</mainClass>
 							</manifest>
 						</archive>
 						<finalName>StatsField-${project.version}</finalName>
@@ -131,7 +127,7 @@
 						</descriptorRefs>
 						<archive>
 							<manifest>
-								<mainClass>es.udc.fic.ri.mipractica.IndexFiles</mainClass>
+								<mainClass>es.udc.fi.ri.mipractica.IndexFiles</mainClass>
 							</manifest>
 						</archive>
 						<finalName>IndexFiles-${project.version}</finalName>
@@ -149,7 +145,7 @@
 						</descriptorRefs>
 						<archive>
 							<manifest>
-								<mainClass>es.udc.fic.ri.mipractica.SimilarTerms</mainClass>
+								<mainClass>es.udc.fi.ri.mipractica.SimilarTerms</mainClass>
 							</manifest>
 						</archive>
 						<finalName>SimilarTerms-${project.version}</finalName>
@@ -167,7 +163,7 @@
 						</descriptorRefs>
 						<archive>
 							<manifest>
-								<mainClass>es.udc.fic.ri.mipractica.BestTerms</mainClass>
+								<mainClass>es.udc.fi.ri.mipractica.BestTerms</mainClass>
 							</manifest>
 						</archive>
 						<finalName>BestTerms-${project.version}</finalName>
@@ -185,7 +181,7 @@
 						</descriptorRefs>
 						<archive>
 							<manifest>
-								<mainClass>es.udc.fic.ri.mipractica.TermsClusters</mainClass>
+								<mainClass>es.udc.fi.ri.mipractica.TermsClusters</mainClass>
 							</manifest>
 						</archive>
 						<finalName>TermsClusters-${project.version}</finalName>
@@ -203,7 +199,7 @@
 						</descriptorRefs>
 						<archive>
 							<manifest>
-								<mainClass>es.udc.fic.ri.mipractica.WriteIndex</mainClass>
+								<mainClass>es.udc.fi.ri.mipractica.WriteIndex</mainClass>
 							</manifest>
 						</archive>
 						<finalName>WriteIndex-${project.version}</finalName>
