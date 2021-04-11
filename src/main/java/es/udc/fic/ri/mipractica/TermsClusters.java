@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealVector;
@@ -29,6 +31,74 @@ public class TermsClusters {
     static int top;
     static String rep;
     static int k;
+    
+    static class Vector{
+    	private Map<Character,Integer> counter;
+    	private Set<Character> charSet;
+    	private double length;
+    	private String word;
+    	public Vector(Map<Character,Integer> counter, Set<Character> charSet, double length, String word){
+    		this.counter=counter;
+    		this.charSet=charSet;
+    		this.length=length;
+    		this.word=word;
+    	}
+    	
+    	public Set<Character> getCharSet(){
+    		return this.charSet;
+    	}
+    	
+    	public Map<Character,Integer>  getCounter(){
+    		return this.counter;
+    	}
+    	
+    	public double  getLength(){
+    		return this.length;
+    	}
+    	
+    	double cosine_sim(Vector v2) {
+    		Set<Character> commonchars= new HashSet<>(this.charSet);
+    		commonchars.retainAll(v2.getCharSet());
+    		
+    		int product_sum=0;
+    		for(Character character : commonchars) {
+    			product_sum +=this.counter.get(character)*v2.getCounter().get(character);
+    		}
+    		
+    		double length = this.length * v2.getLength();
+    		System.out.println("AAAAA"+length);
+    		
+    		double similarity = 0;
+    		if(length!=0) {
+    			similarity=(product_sum/length);
+    		}
+    		return similarity;
+    	}
+    }
+    
+    private static Vector word2vec(String word) {
+    	Map<Character,Integer> counter = new HashMap<>();
+    	for(int i = 0;i<word.length();i++) {
+    		if(counter.get(word.charAt(i))!=null) {
+    			int count = counter.get(word.charAt(i))+1;
+        		//counter.put(word.charAt(i), count);
+        		counter.replace(word.charAt(i), count);
+        			
+    		}else {
+    			counter.put(word.charAt(i), 1);
+    		}
+    	}
+    	
+    	Set<Character> charSet = counter.keySet();
+    	
+    	double length=0;
+    	for(int i : counter.values()) {
+    		length=length+(i*i);
+    	}
+    	length = Math.sqrt(length);
+    	
+    	return new Vector(counter,charSet,length,word);
+    }
 
     private static void parseArguments(String[] args) {
 
@@ -71,6 +141,7 @@ public class TermsClusters {
     public static void main(String[] args) {
 
         parseArguments(args);
+        Vector v1 = word2vec(term);
         
         IndexReader reader = null;
 
@@ -92,10 +163,17 @@ public class TermsClusters {
         		BytesRef text = null;
         		while ((text = termsEnum.next()) != null) {
         			String term = text.utf8ToString();
-        			int freq = (int) termsEnum.totalTermFreq();
-        			frequencies.put(term, freq);
+        			Vector v2 = word2vec(term);
         			System.out.println(term);
-        			terms.add(term);
+        			System.out.println(v1.cosine_sim(v2));
+        			
+        			
+        			
+        			
+        			//int freq = (int) termsEnum.totalTermFreq();
+        			//frequencies.put(term, freq);
+        			//System.out.println(term);
+        			//terms.add(term);
         		}
         	}
         	if(!terms.contains(term)) {

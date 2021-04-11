@@ -100,7 +100,7 @@ public class IndexFiles {
 
     }
 
-    static final String DEFAULT_PATH = "config.properties";
+    static final String DEFAULT_PATH = "../src/main/resources/config.properties";
 
     static String indexPath = "index"; //default index path is a folder named index located in the root dir
     static boolean create = true; //Create true == Update false
