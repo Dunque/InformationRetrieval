@@ -1,64 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" name="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.039" tests="1" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" name="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.086" tests="1" errors="0" skipped="0" failures="0">
   <properties>
-    <property name="sun.desktop" value="windows"/>
-    <property name="awt.toolkit" value="sun.awt.windows.WToolkit"/>
+    <property name="awt.toolkit" value="sun.awt.X11.XToolkit"/>
     <property name="java.specification.version" value="11"/>
-    <property name="sun.cpu.isalist" value="amd64"/>
-    <property name="sun.jnu.encoding" value="Cp1252"/>
-    <property name="java.class.path" value="C:\Users\Roi\eclipse-workspace\InformationRetrieval\target\test-classes;C:\Users\Roi\eclipse-workspace\InformationRetrieval\target\classes;C:\Users\Roi\.m2\repository\org\apache\commons\commons-math3\3.6.1\commons-math3-3.6.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-core\8.1.1\lucene-core-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-queryparser\8.1.1\lucene-queryparser-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-queries\8.1.1\lucene-queries-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-sandbox\8.1.1\lucene-sandbox-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-analyzers-common\8.1.1\lucene-analyzers-common-8.1.1.jar;C:\Users\Roi\.m2\repository\junit\junit\4.11\junit-4.11.jar;C:\Users\Roi\.m2\repository\org\hamcrest\hamcrest-core\1.3\hamcrest-core-1.3.jar;"/>
-    <property name="java.vm.vendor" value="AdoptOpenJDK"/>
+    <property name="sun.cpu.isalist" value=""/>
+    <property name="sun.jnu.encoding" value="UTF-8"/>
+    <property name="java.class.path" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/test-classes:/home/anton/Desktop/RI/p1/InformationRetrieval/target/classes:/home/anton/.m2/repository/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-core/8.1.1/lucene-core-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-queryparser/8.1.1/lucene-queryparser-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-queries/8.1.1/lucene-queries-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-sandbox/8.1.1/lucene-sandbox-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-analyzers-common/8.1.1/lucene-analyzers-common-8.1.1.jar:/home/anton/.m2/repository/junit/junit/4.11/junit-4.11.jar:/home/anton/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:"/>
+    <property name="java.vm.vendor" value="Ubuntu"/>
     <property name="sun.arch.data.model" value="64"/>
-    <property name="user.variant" value=""/>
-    <property name="java.vendor.url" value="https://adoptopenjdk.net/"/>
-    <property name="user.timezone" value="Europe/Paris"/>
+    <property name="java.vendor.url" value="https://ubuntu.com/"/>
+    <property name="user.timezone" value=""/>
     <property name="java.vm.specification.version" value="11"/>
-    <property name="os.name" value="Windows 10"/>
+    <property name="os.name" value="Linux"/>
     <property name="sun.java.launcher" value="SUN_STANDARD"/>
-    <property name="user.country" value="ES"/>
-    <property name="sun.boot.library.path" value="C:\Program Files\AdoptOpenJDK\jdk-11.0.10.9-hotspot\bin"/>
-    <property name="sun.java.command" value="C:\Users\Roi\AppData\Local\Temp\surefire5302071676228199680\surefirebooter9560422963006683167.jar C:\Users\Roi\AppData\Local\Temp\surefire5302071676228199680 2021-04-10T19-00-55_378-jvmRun1 surefire960220088771752764tmp surefire_02800735233414457879tmp"/>
+    <property name="user.country" value="US"/>
+    <property name="sun.boot.library.path" value="/usr/lib/jvm/java-11-openjdk-amd64/lib"/>
+    <property name="sun.java.command" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire/surefirebooter15974711521755220168.jar /home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire 2021-04-11T08-21-51_633-jvmRun1 surefire1941329482496685338tmp surefire_05686863779585285052tmp"/>
     <property name="jdk.debug" value="release"/>
-    <property name="surefire.test.class.path" value="C:\Users\Roi\eclipse-workspace\InformationRetrieval\target\test-classes;C:\Users\Roi\eclipse-workspace\InformationRetrieval\target\classes;C:\Users\Roi\.m2\repository\org\apache\commons\commons-math3\3.6.1\commons-math3-3.6.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-core\8.1.1\lucene-core-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-queryparser\8.1.1\lucene-queryparser-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-queries\8.1.1\lucene-queries-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-sandbox\8.1.1\lucene-sandbox-8.1.1.jar;C:\Users\Roi\.m2\repository\org\apache\lucene\lucene-analyzers-common\8.1.1\lucene-analyzers-common-8.1.1.jar;C:\Users\Roi\.m2\repository\junit\junit\4.11\junit-4.11.jar;C:\Users\Roi\.m2\repository\org\hamcrest\hamcrest-core\1.3\hamcrest-core-1.3.jar;"/>
+    <property name="surefire.test.class.path" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/test-classes:/home/anton/Desktop/RI/p1/InformationRetrieval/target/classes:/home/anton/.m2/repository/org/apache/commons/commons-math3/3.6.1/commons-math3-3.6.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-core/8.1.1/lucene-core-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-queryparser/8.1.1/lucene-queryparser-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-queries/8.1.1/lucene-queries-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-sandbox/8.1.1/lucene-sandbox-8.1.1.jar:/home/anton/.m2/repository/org/apache/lucene/lucene-analyzers-common/8.1.1/lucene-analyzers-common-8.1.1.jar:/home/anton/.m2/repository/junit/junit/4.11/junit-4.11.jar:/home/anton/.m2/repository/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar:"/>
     <property name="sun.cpu.endian" value="little"/>
-    <property name="user.home" value="C:\Users\Roi"/>
-    <property name="user.language" value="es"/>
+    <property name="user.home" value="/home/anton"/>
+    <property name="user.language" value="en"/>
     <property name="java.specification.vendor" value="Oracle Corporation"/>
     <property name="java.version.date" value="2021-01-19"/>
-    <property name="java.home" value="C:\Program Files\AdoptOpenJDK\jdk-11.0.10.9-hotspot"/>
-    <property name="file.separator" value="\"/>
-    <property name="basedir" value="C:\Users\Roi\eclipse-workspace\InformationRetrieval"/>
-    <property name="java.vm.compressedOopsMode" value="Zero based"/>
+    <property name="java.home" value="/usr/lib/jvm/java-11-openjdk-amd64"/>
+    <property name="file.separator" value="/"/>
+    <property name="basedir" value="/home/anton/Desktop/RI/p1/InformationRetrieval"/>
+    <property name="java.vm.compressedOopsMode" value="32-bit"/>
     <property name="line.separator" value="&#10;"/>
     <property name="java.specification.name" value="Java Platform API Specification"/>
     <property name="java.vm.specification.vendor" value="Oracle Corporation"/>
-    <property name="java.awt.graphicsenv" value="sun.awt.Win32GraphicsEnvironment"/>
-    <property name="surefire.real.class.path" value="C:\Users\Roi\AppData\Local\Temp\surefire5302071676228199680\surefirebooter9560422963006683167.jar"/>
-    <property name="user.script" value=""/>
+    <property name="java.awt.graphicsenv" value="sun.awt.X11GraphicsEnvironment"/>
+    <property name="surefire.real.class.path" value="/home/anton/Desktop/RI/p1/InformationRetrieval/target/surefire/surefirebooter15974711521755220168.jar"/>
     <property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/>
-    <property name="java.runtime.version" value="11.0.10+9"/>
-    <property name="user.name" value="Roi"/>
-    <property name="path.separator" value=";"/>
-    <property name="os.version" value="10.0"/>
+    <property name="java.runtime.version" value="11.0.10+9-Ubuntu-0ubuntu1.18.04"/>
+    <property name="user.name" value="anton"/>
+    <property name="path.separator" value=":"/>
+    <property name="os.version" value="5.4.0-70-generic"/>
     <property name="java.runtime.name" value="OpenJDK Runtime Environment"/>
-    <property name="file.encoding" value="Cp1252"/>
+    <property name="file.encoding" value="UTF-8"/>
     <property name="java.vm.name" value="OpenJDK 64-Bit Server VM"/>
-    <property name="java.vendor.version" value="AdoptOpenJDK"/>
-    <property name="localRepository" value="C:\Users\Roi\.m2\repository"/>
-    <property name="java.vendor.url.bug" value="https://github.com/AdoptOpenJDK/openjdk-support/issues"/>
-    <property name="java.io.tmpdir" value="C:\Users\Roi\AppData\Local\Temp\"/>
+    <property name="localRepository" value="/home/anton/.m2/repository"/>
+    <property name="java.vendor.url.bug" value="https://bugs.launchpad.net/ubuntu/+source/openjdk-lts"/>
+    <property name="java.io.tmpdir" value="/tmp"/>
     <property name="java.version" value="11.0.10"/>
-    <property name="user.dir" value="C:\Users\Roi\eclipse-workspace\InformationRetrieval"/>
+    <property name="user.dir" value="/home/anton/Desktop/RI/p1/InformationRetrieval"/>
     <property name="os.arch" value="amd64"/>
     <property name="java.vm.specification.name" value="Java Virtual Machine Specification"/>
-    <property name="java.awt.printerjob" value="sun.awt.windows.WPrinterJob"/>
-    <property name="sun.os.patch.level" value=""/>
-    <property name="java.library.path" value="C:\Program Files\AdoptOpenJDK\jdk-11.0.10.9-hotspot\bin;C:\Windows\Sun\Java\bin;C:\Windows\system32;C:\Windows;C:\Program Files\AdoptOpenJDK\jdk-11.0.10.9-hotspot\bin;C:\Program Files\AdoptOpenJDK\jdk-8.0.282.8-hotspot\bin;C:\Program Files\AdoptOpenJDK\jre-11.0.7.10-hotspot\bin;C:\Program Files\AdoptOpenJDK\jre-8.0.252.09-hotspot\bin;C:\Windows\system32;C:\Windows;C:\Windows\System32\Wbem;C:\Windows\System32\WindowsPowerShell\v1.0\;C:\Windows\System32\OpenSSH\;C:\Program Files\PuTTY\;C:\Program Files\Microsoft VS Code\bin;C:\Program Files (x86)\NVIDIA Corporation\PhysX\Common;C:\Program Files\dotnet\;C:\Program Files\Microsoft SQL Server\130\Tools\Binn\;C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\;C:\Program Files\CMake\bin;C:\Program Files (x86)\Pulse Secure\VC142.CRT\X64\;C:\Program Files (x86)\Pulse Secure\VC142.CRT\X86\;C:\Program Files\Git\cmd;C:\Users\Roi\Downloads\BCML\bin;C:\Users\Roi\AppData\Local\Microsoft\WindowsApps;C:\Users\Roi\.dotnet\tools;C:\Users\Roi\AppData\Local\GitHubDesktop\bin;C:\Program Files\AdoptOpenJDK\jdk-11.0.10.9-hotspot\\bin;C:\Program Files\Java\apache-maven-3.6.3\bin;C:\Program Files\MySQL\MySQL Server 8.0\bin;;."/>
-    <property name="java.vm.info" value="mixed mode"/>
-    <property name="java.vendor" value="AdoptOpenJDK"/>
-    <property name="java.vm.version" value="11.0.10+9"/>
+    <property name="java.awt.printerjob" value="sun.print.PSPrinterJob"/>
+    <property name="sun.os.patch.level" value="unknown"/>
+    <property name="java.library.path" value="/usr/java/packages/lib:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib"/>
+    <property name="java.vm.info" value="mixed mode, sharing"/>
+    <property name="java.vendor" value="Ubuntu"/>
+    <property name="java.vm.version" value="11.0.10+9-Ubuntu-0ubuntu1.18.04"/>
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="55.0"/>
   </properties>
-  <testcase name="shouldAnswerWithTrue" classname="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.001"/>
+  <testcase name="shouldAnswerWithTrue" classname="es.udc.fic.ri.mipractica.TermsClustersTest" time="0.009"/>
 </testsuite>
