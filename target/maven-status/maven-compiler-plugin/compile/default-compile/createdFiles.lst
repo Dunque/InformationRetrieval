@@ -2,6 +2,7 @@ es\udc\fic\ri\mipractica\BestTerms$TFXIDFComparator.class
 es\udc\fic\ri\mipractica\SimilarTerms$TermValues.class
 es\udc\fic\ri\mipractica\SimilarTerms$CosineDocumentSimilarity.class
 es\udc\fic\ri\mipractica\IndexFiles.class
+es\udc\fic\ri\mipractica\BestTerms$1.class
 es\udc\fic\ri\mipractica\BestTerms$TFComparator.class
 es\udc\fic\ri\mipractica\SimilarTerms.class
 es\udc\fic\ri\mipractica\App.class
@@ -9,8 +10,7 @@ es\udc\fic\ri\mipractica\IndexFiles$1.class
 es\udc\fic\ri\mipractica\IndexFiles$WorkerThread.class
 es\udc\fic\ri\mipractica\WriteIndex.class
 es\udc\fic\ri\mipractica\StatsField.class
-es\udc\fic\ri\mipractica\SimilarTerms$TFComparator.class
+es\udc\fic\ri\mipractica\BestTerms$DFComparator.class
 es\udc\fic\ri\mipractica\TermsClusters.class
 es\udc\fic\ri\mipractica\BestTerms.class
 es\udc\fic\ri\mipractica\BestTerms$TermValues.class
-es\udc\fic\ri\mipractica\SimilarTerms$TFXIDFComparator.class

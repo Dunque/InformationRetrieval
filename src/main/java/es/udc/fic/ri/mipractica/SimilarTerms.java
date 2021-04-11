@@ -25,7 +25,7 @@ public class SimilarTerms {
 
         private final Set<String> terms = new HashSet<>();
 
-        CosineDocumentSimilarity(){
+        CosineDocumentSimilarity() {
         }
 
         /* Indexed, tokenized, stored. */
@@ -193,21 +193,33 @@ public class SimilarTerms {
             System.exit(-1);
         }
 
+        List<Integer> docsList = new ArrayList<>();
+
+        //Obtenemos la lista invertida del termino de referencia
+        PostingsEnum referenceTermPosting = MultiTerms.getTermPostingsEnum(reader, field, new BytesRef(term));
+        //Comprobamos que existe
+        if (referenceTermPosting != null) {
+            int docid;
+            //Parseamos la lista entera de documentos en los que aparece el termino
+            while ((docid = referenceTermPosting.nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
+                //DocId contiene el id de un documento en el que aparece el termino solicitado
+                docsList.add(docid);
+            }
+        }
+
         CosineDocumentSimilarity cds = new CosineDocumentSimilarity();
 
-        List<Terms> nonNullTerms = new ArrayList<>();
+        for (int i = 0; i < docsList.size() - 1; i++) {
 
-        for (int i = 0; i < nonNullTerms.size()-1; i++) {
-
-            Map<String, Integer> tm1 = cds.getTermFrequencies(reader, i, field);
-            Map<String, Integer> tm2 = cds.getTermFrequencies(reader, i+1, field);
+            Map<String, Integer> tm1 = cds.getTermFrequencies(reader, docsList.get(i), field);
+            Map<String, Integer> tm2 = cds.getTermFrequencies(reader, docsList.get(i + 1), field);
 
             RealVector v1 = cds.toRealVector(tm1);
             RealVector v2 = cds.toRealVector(tm2);
 
             double sim = cds.getCosineSimilarity(v1, v2);
 
-            System.out.println("Similarity between vectors " + i + " and " + i+1 + " : " + sim);
+            System.out.println("Similarity between vectors " + docsList.get(i) + " and " + docsList.get(i + 1) + " : " + sim);
 
         }
 

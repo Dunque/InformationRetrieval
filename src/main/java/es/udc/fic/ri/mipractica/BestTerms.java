@@ -24,7 +24,7 @@ import java.util.List;
 
 public class BestTerms {
 
-    static String indexPath;
+    static String indexPath = "index";
     static int docID;
     static String field;
     static int top;
@@ -109,13 +109,36 @@ public class BestTerms {
         }
     }
 
-    public static ArrayList<TermValues> calculateTfidf(IndexReader reader, String field, int docID) throws IOException {
+    private static class DFComparator implements Comparator<TermValues> {
+
+        public int compare(TermValues a, TermValues b) {
+            if (a.df > b.df)
+                return -1;
+            else if (b.df > a.df)
+                return 1;
+            else
+                return 0;
+        }
+    }
+
+    public static void main(String[] args) throws Exception {
+
+        parseArguments(args);
+
+        DirectoryReader reader = null;
+
+        try {
+            reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        }
 
         Terms termVector;
 
         if ((termVector = reader.getTermVector(docID, field)) == null) {
             System.out.println("Document has no term vector");
-            return null;
+            System.exit(-1);
         }
 
         TermsEnum iterator = termVector.iterator();
@@ -130,62 +153,26 @@ public class BestTerms {
             Term term = new Term(field, tmpTerm);
             long indexDf = reader.docFreq(term);
             double idf = classicSimilarity.idf(docsCount, indexDf);
+            int df = reader.docFreq(term);
             docs = iterator.postings(docs, PostingsEnum.NONE);
 
             while (docs.nextDoc() != PostingsEnum.NO_MORE_DOCS) {
 
                 double tf = classicSimilarity.tf(docs.freq());
-                //termValuesArray.add(new TermValues(term.text(), tf, idf));
+                termValuesArray.add(new TermValues(term.text(), tf, df, idf));
             }
         }
-        return termValuesArray;
-    }
 
-    private static IndexSearcher createSearcher(String path) throws IOException {
-        Directory dir = FSDirectory.open(Paths.get(path));
-        IndexReader reader = DirectoryReader.open(dir);
-        IndexSearcher searcher = new IndexSearcher(reader);
-        return searcher;
-    }
-
-    private static TopDocs searchById(Integer id, IndexSearcher searcher) throws Exception {
-        QueryParser qp = new QueryParser("id", new StandardAnalyzer());
-        Query idQuery = qp.parse(id.toString());
-        TopDocs hits = searcher.search(idQuery, 10);
-        return hits;
-    }
-
-    public static void main(String[] args) throws Exception {
-
-        parseArguments(args);
-
-        IndexSearcher searcher = createSearcher(indexPath);
-        TopDocs foundDocs = searchById(docID, searcher);
-        Document doc;
-
-        for (ScoreDoc sd : foundDocs.scoreDocs) {
-            doc = searcher.doc(sd.doc);
-        }
-
-        DirectoryReader reader = null;
-
-        try {
-            reader = DirectoryReader.open(FSDirectory.open(Paths.get(indexPath)));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        Collections.sort(termValuesArray, new TFComparator());
+        for (int i = 0; i < top; i++)
+            System.out.println(termValuesArray.get(i).term);
+        Collections.sort(termValuesArray, new DFComparator());
+        for (int i = 0; i < top; i++)
+            System.out.println(termValuesArray.get(i).term);
+        Collections.sort(termValuesArray, new TFXIDFComparator());
+        for (int i = 0; i < top; i++)
+            System.out.println(termValuesArray.get(i).term);
 
 
-//        ArrayList<TermValues> termValuesArray = calculateTfidf(reader, field, docId);
-//
-//        if (rep == "tfxidf")
-//            Collections.sort(termValuesArray, new TFXIDFComparator());
-//        else if (rep == "tf")
-//            Collections.sort(termValuesArray, new TFComparator());
-//        else if (rep == "bin")
-//            Collections.sort(termValuesArray, new TFComparator());
-//
-//        for (int i = 0; i < top; i++)
-//            System.out.println(termValuesArray.get(i).term);
     }
 }
