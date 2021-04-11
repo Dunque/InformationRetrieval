@@ -1,4 +1,4 @@
-package es.udc.fic.ri.mipractica;
+package es.udc.fi.ri.mipractica;
 
 import java.io.IOException;
 import java.nio.file.Paths;

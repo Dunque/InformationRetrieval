@@ -1,4 +1,4 @@
-package es.udc.fic.ri.mipractica;
+package es.udc.fi.ri.mipractica;
 
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -163,13 +163,19 @@ public class BestTerms {
             }
         }
 
+        if (top> termValuesArray.size())
+            top = termValuesArray.size();
+
         Collections.sort(termValuesArray, new TFComparator());
+        System.out.printf("Best terms: TF\n");
         for (int i = 0; i < top; i++)
             System.out.println(termValuesArray.get(i).term);
         Collections.sort(termValuesArray, new DFComparator());
+        System.out.printf("Best terms: DF\n");
         for (int i = 0; i < top; i++)
             System.out.println(termValuesArray.get(i).term);
         Collections.sort(termValuesArray, new TFXIDFComparator());
+        System.out.printf("Best terms: TFIDF\n");
         for (int i = 0; i < top; i++)
             System.out.println(termValuesArray.get(i).term);
 

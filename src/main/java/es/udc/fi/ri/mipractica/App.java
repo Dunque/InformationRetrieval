@@ -1,4 +1,4 @@
-package es.udc.fic.ri.mipractica;
+package es.udc.fi.ri.mipractica;
 
 public class App {
     public static void main( String[] args )

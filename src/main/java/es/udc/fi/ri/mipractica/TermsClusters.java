@@ -1,4 +1,4 @@
-package es.udc.fic.ri.mipractica;
+package es.udc.fi.ri.mipractica;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -207,7 +207,6 @@ public class TermsClusters {
          for(int i = 0;i<top;i++) {
         	 System.out.println("Term: "+result.get(i)+" Similarity: "+String.format("%.4f",result_sim.get(i))+"%");
          }
-        	
     			
     		
 		} catch (IOException e2) {

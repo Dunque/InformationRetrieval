@@ -1,4 +1,4 @@
-package es.udc.fic.ri.mipractica;
+package es.udc.fi.ri.mipractica;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.CorruptIndexException;
